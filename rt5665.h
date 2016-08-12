@@ -1901,9 +1901,34 @@ enum {
 	RT5665_CLK_SEL_SYS4,
 };
 
+struct rt5665_priv {
+	struct snd_soc_codec *codec;
+	struct rt5665_platform_data pdata;
+	struct regmap *regmap;
+	struct snd_soc_jack *hs_jack;
+	struct delayed_work jack_detect_work;
+	struct delayed_work calibrate_work;
+	struct mutex calibrate_mutex;
+
+	int sysclk;
+	int sysclk_src;
+	int lrck[RT5665_AIFS];
+	int bclk[RT5665_AIFS];
+	int master[RT5665_AIFS];
+	int id;
+
+	int pll_src;
+	int pll_in;
+	int pll_out;
+
+	int jack_type;
+
+};
+
 int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
 		unsigned int filter_mask, unsigned int clk_src);
 int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 	struct snd_soc_jack *hs_jack);
+void rt5665_micbias_output(int on);
 
 #endif /* __RT5665_H__ */
