@@ -1397,6 +1397,8 @@
 #define RT5665_PLL_M_SFT			12
 #define RT5665_PLL_M_BP				(0x1 << 11)
 #define RT5665_PLL_M_BP_SFT			11
+#define RT5665_PLL_K_BP				(0x1 << 10)
+#define RT5665_PLL_K_BP_SFT			10
 
 /* PLL tracking mode 1 (0x0083) */
 #define RT5665_I2S3_ASRC_MASK			(0x1 << 15)
