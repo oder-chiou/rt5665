@@ -431,6 +431,7 @@ static const struct reg_default rt5665_reg[] = {
 static struct reg_default rt5665_init_list[] = {
 	{RT5665_BIAS_CUR_CTRL_8, 	0xa602},
 	{RT5665_EJD_CTRL_1, 		0x4070},
+	{RT5665_ASRC_8, 		0x0120},
 };
 
 
@@ -1361,6 +1362,177 @@ static int rt5665_button_type_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static const char * const rt5665_asrc_clk_src[] = {
+	"clk_sysy_div_out", "clk_i2s12_track", "clk_i2s34_track",
+	"clk_i2s5_track", "clk_sys", "clk_sys2", "clk_sys3"
+};
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_da_sto1_asrc_enum, RT5665_ASRC_2, RT5665_DA_STO1_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_da_monol_asrc_enum, RT5665_ASRC_2, RT5665_DA_MONOL_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_da_monor_asrc_enum, RT5665_ASRC_2, RT5665_DA_MONOR_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_da_sto2_asrc_enum, RT5665_ASRC_2, RT5665_DA_STO2_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_ad_sto1_asrc_enum, RT5665_ASRC_3, RT5665_AD_STO1_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_ad_sto2_asrc_enum, RT5665_ASRC_3, RT5665_AD_STO2_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_ad_monol_asrc_enum, RT5665_ASRC_3, RT5665_AD_MONOL_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static const SOC_ENUM_SINGLE_DECL(
+	rt5665_ad_monor_asrc_enum, RT5665_ASRC_3, RT5665_AD_MONOL_CLK_SEL_SFT,
+	rt5665_asrc_clk_src);
+
+static int rt5665_clk_sel_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	unsigned int u_bit = 0, p_bit = 0;
+	unsigned int asrc2, asrc3;
+	int ret;
+	struct soc_enum *em =
+		(struct soc_enum *)kcontrol->private_value;
+
+	pr_debug("%s\n", __func__);
+
+	switch (em->reg) {
+	case RT5665_ASRC_2:
+		switch (em->shift_l) {
+		case RT5665_DA_STO1_CLK_SEL_SFT:
+			u_bit = RT5665_ADC_STO1_ASRC_MASK;
+			p_bit = RT5665_PWR_ADC_S1F;
+			break;
+		case RT5665_DA_MONOR_CLK_SEL_SFT:
+			u_bit = RT5665_DAC_MONO_R_ASRC_MASK;
+			p_bit = RT5665_PWR_DAC_MF_R;
+			break;
+		case RT5665_DA_MONOL_CLK_SEL_SFT:
+			u_bit = RT5665_DAC_MONO_L_ASRC_MASK;
+			p_bit = RT5665_PWR_DAC_MF_L;
+			break;
+		case RT5665_DA_STO2_CLK_SEL_SFT:
+			u_bit = RT5665_ADC_STO2_ASRC_MASK;
+			p_bit = RT5665_PWR_DAC_S1F;
+			break;
+		}
+		break;
+	case RT5665_ASRC_3:
+		switch (em->shift_l) {
+		case RT5665_AD_STO1_CLK_SEL_SFT:
+			u_bit = RT5665_ADC_STO1_ASRC_MASK;
+			p_bit = RT5665_PWR_ADC_S1F;
+			break;
+		case RT5665_AD_STO2_CLK_SEL_SFT:
+			u_bit = RT5665_ADC_STO2_ASRC_MASK;
+			p_bit = RT5665_PWR_ADC_S2F;
+			break;
+		case RT5665_AD_MONOR_CLK_SEL_SFT:
+			u_bit = RT5665_ADC_MONO_R_ASRC_MASK;
+			p_bit = RT5665_PWR_ADC_MF_R;
+			break;
+		case RT5665_AD_MONOL_CLK_SEL_SFT:
+			u_bit = RT5665_ADC_MONO_L_ASRC_MASK;
+			p_bit = RT5665_PWR_ADC_MF_L;
+			break;
+		}
+		break;
+	}
+
+	if (u_bit || p_bit) {
+		switch (ucontrol->value.integer.value[0]) {
+		case 1: /*enable*/
+		case 2:
+		case 3:
+			u_bit |= (1 << (10 + ucontrol->value.integer.value[0]));
+			if (snd_soc_read(codec, RT5665_PWR_DIG_2) & p_bit)
+				snd_soc_update_bits(codec,
+					RT5665_ASRC_1, u_bit, u_bit);
+			break;
+		default: /*disable*/
+			ret = snd_soc_put_value_enum_double(kcontrol, ucontrol);
+
+			asrc2 = snd_soc_read(codec, RT5665_ASRC_2);
+			asrc3 = snd_soc_read(codec, RT5665_ASRC_3);
+
+			if ((((asrc2 & RT5665_DA_STO1_CLK_SEL_MASK) >>
+				RT5665_DA_STO1_CLK_SEL_SFT) != 1) &&
+			(((asrc2 & RT5665_DA_STO2_CLK_SEL_MASK) >>
+				RT5665_DA_STO2_CLK_SEL_SFT) != 1) &&
+			(((asrc2 & RT5665_DA_MONOL_CLK_SEL_MASK) >>
+				RT5665_DA_MONOL_CLK_SEL_SFT) != 1) &&
+			(((asrc2 & RT5665_DA_MONOR_CLK_SEL_MASK) >>
+				RT5665_DA_MONOR_CLK_SEL_SFT) != 1) &&
+			(((asrc3 & RT5665_AD_STO1_CLK_SEL_MASK) >>
+				RT5665_AD_STO1_CLK_SEL_SFT) != 1) &&
+			(((asrc3 & RT5665_AD_STO2_CLK_SEL_MASK) >>
+				RT5665_AD_STO2_CLK_SEL_SFT) != 1) &&
+			(((asrc3 & RT5665_AD_MONOL_CLK_SEL_MASK) >>
+				RT5665_AD_MONOL_CLK_SEL_SFT) != 1) &&
+			(((asrc3 & RT5665_AD_MONOR_CLK_SEL_MASK) >>
+				RT5665_AD_MONOR_CLK_SEL_SFT) != 1))
+				u_bit |= 0x2000;
+
+			if ((((asrc2 & RT5665_DA_STO1_CLK_SEL_MASK) >>
+				RT5665_DA_STO1_CLK_SEL_SFT) != 2) &&
+			(((asrc2 & RT5665_DA_STO2_CLK_SEL_MASK) >>
+				RT5665_DA_STO2_CLK_SEL_SFT) != 2) &&
+			(((asrc2 & RT5665_DA_MONOL_CLK_SEL_MASK) >>
+				RT5665_DA_MONOL_CLK_SEL_SFT) != 2) &&
+			(((asrc2 & RT5665_DA_MONOR_CLK_SEL_MASK) >>
+				RT5665_DA_MONOR_CLK_SEL_SFT) != 2) &&
+			(((asrc3 & RT5665_AD_STO1_CLK_SEL_MASK) >>
+				RT5665_AD_STO1_CLK_SEL_SFT) != 2) &&
+			(((asrc3 & RT5665_AD_STO2_CLK_SEL_MASK) >>
+				RT5665_AD_STO2_CLK_SEL_SFT) != 2) &&
+			(((asrc3 & RT5665_AD_MONOL_CLK_SEL_MASK) >>
+				RT5665_AD_MONOL_CLK_SEL_SFT) != 2) &&
+			(((asrc3 & RT5665_AD_MONOR_CLK_SEL_MASK) >>
+				RT5665_AD_MONOR_CLK_SEL_SFT) != 2))
+				u_bit |= 0x4000;
+
+			if ((((asrc2 & RT5665_DA_STO1_CLK_SEL_MASK) >>
+				RT5665_DA_STO1_CLK_SEL_SFT) != 3) &&
+			(((asrc2 & RT5665_DA_STO2_CLK_SEL_MASK) >>
+				RT5665_DA_STO2_CLK_SEL_SFT) != 3) &&
+			(((asrc2 & RT5665_DA_MONOL_CLK_SEL_MASK) >>
+				RT5665_DA_MONOL_CLK_SEL_SFT) != 3) &&
+			(((asrc2 & RT5665_DA_MONOR_CLK_SEL_MASK) >>
+				RT5665_DA_MONOR_CLK_SEL_SFT) != 3) &&
+			(((asrc3 & RT5665_AD_STO1_CLK_SEL_MASK) >>
+				RT5665_AD_STO1_CLK_SEL_SFT) != 3) &&
+			(((asrc3 & RT5665_AD_STO2_CLK_SEL_MASK) >>
+				RT5665_AD_STO2_CLK_SEL_SFT) != 3) &&
+			(((asrc3 & RT5665_AD_MONOL_CLK_SEL_MASK) >>
+				RT5665_AD_MONOL_CLK_SEL_SFT) != 3) &&
+			(((asrc3 & RT5665_AD_MONOR_CLK_SEL_MASK) >>
+				RT5665_AD_MONOR_CLK_SEL_SFT) != 3))
+				u_bit |= 0x8000;
+
+			snd_soc_update_bits(codec, RT5665_ASRC_1, u_bit, 0);
+
+			return ret;
+		}
+	}
+
+	return snd_soc_put_value_enum_double(kcontrol, ucontrol);
+}
+
 static const struct snd_kcontrol_new rt5665_snd_controls[] = {
 	/* Headphone Output Volume */
 	SOC_DOUBLE_R_EXT_TLV("Headphone Playback Volume", RT5665_HPL_GAIN,
@@ -1426,6 +1598,23 @@ static const struct snd_kcontrol_new rt5665_snd_controls[] = {
 	SOC_DOUBLE_TLV("STO2 ADC Boost Gain Volume", RT5665_STO2_ADC_BOOST,
 		RT5665_STO2_ADC_L_BST_SFT, RT5665_STO2_ADC_R_BST_SFT,
 		3, 0, adc_bst_tlv),
+
+	SOC_ENUM_EXT("DA STO1 Clk Sel", rt5665_da_sto1_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
+	SOC_ENUM_EXT("DA STO2 Clk Sel", rt5665_da_sto2_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
+	SOC_ENUM_EXT("DA MONOL Clk Sel", rt5665_da_monol_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
+	SOC_ENUM_EXT("DA MONOR Clk Sel", rt5665_da_monor_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
+	SOC_ENUM_EXT("AD STO1 Clk Sel", rt5665_ad_sto1_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
+	SOC_ENUM_EXT("AD STO2 Clk Sel", rt5665_ad_sto2_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
+	SOC_ENUM_EXT("AD MONOL Clk Sel", rt5665_ad_monol_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
+	SOC_ENUM_EXT("AD MONOR Clk Sel", rt5665_ad_monor_asrc_enum,
+		snd_soc_get_value_enum_double, rt5665_clk_sel_put),
 
 	/* for test only */
 	SOC_ENUM_EXT("jack type", rt5665_jack_type_enum,
