@@ -3261,7 +3261,13 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 		0, 1, &rt5665_pdm_r_mux),
 
 	/* CLK DET */
-	SND_SOC_DAPM_SUPPLY("SYS CLK DET", RT5665_CLK_DET, RT5665_SYS_CLK_DET,
+	SND_SOC_DAPM_SUPPLY("CLKDET SYS", RT5665_CLK_DET, RT5665_SYS_CLK_DET,
+		0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("CLKDET HP", RT5665_CLK_DET, RT5665_HP_CLK_DET,
+		0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("CLKDET MONO", RT5665_CLK_DET, RT5665_MONO_CLK_DET,
+		0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("CLKDET LOUT", RT5665_CLK_DET, RT5665_LOUT_CLK_DET,
 		0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("CLKDET", RT5665_CLK_DET, RT5665_POW_CLK_DET,
 		0, NULL, 0),
@@ -3318,7 +3324,10 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"I2S2_2", NULL, "I2S2 ASRC"},
 	{"I2S3", NULL, "I2S3 ASRC"},
 
-	{"SYS CLK DET", NULL, "CLKDET"},
+	{"CLKDET SYS", NULL, "CLKDET"},
+	{"CLKDET HP", NULL, "CLKDET"},
+	{"CLKDET MONO", NULL, "CLKDET"},
+	{"CLKDET LOUT", NULL, "CLKDET"},
 
 	{"IN1P", NULL, "LDO2"},
 	{"IN2P", NULL, "LDO2"},
@@ -3870,14 +3879,16 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"Mono MIX", "MONOVOL Switch", "MONOVOL"},
 	{"Mono Amp", NULL, "Mono MIX"},
 	{"Mono Amp", NULL, "Vref2"},
-	{"Mono Amp", NULL, "SYS CLK DET"},
+	{"Mono Amp", NULL, "CLKDET SYS"},
+	{"Mono Amp", NULL, "CLKDET MONO"},
 	{"Mono Playback", "Switch", "Mono Amp"},
 	{"MONOOUT", NULL, "Mono Playback"},
 
 	{"HP Amp", NULL, "DAC L1"},
 	{"HP Amp", NULL, "DAC R1"},
 	{"HP Amp", NULL, "Charge Pump"},
-	{"HP Amp", NULL, "SYS CLK DET"},
+	{"HP Amp", NULL, "CLKDET SYS"},
+	{"HP Amp", NULL, "CLKDET HP"},
 	{"HP Amp", NULL, "CBJ Power"},
 	{"HP Amp", NULL, "Vref2"},
 	{"HPO Playback", "Switch", "HP Amp"},
@@ -3894,7 +3905,8 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"LOUT Amp", NULL, "LOUT R MIX"},
 	{"LOUT Amp", NULL, "Vref1"},
 	{"LOUT Amp", NULL, "Vref2"},
-	{"LOUT Amp", NULL, "SYS CLK DET"},
+	{"LOUT Amp", NULL, "CLKDET SYS"},
+	{"LOUT Amp", NULL, "CLKDET LOUT"},
 	{"LOUT L Playback", "Switch", "LOUT Amp"},
 	{"LOUT R Playback", "Switch", "LOUT Amp"},
 	{"LOUTL", NULL, "LOUT L Playback"},
@@ -4301,7 +4313,7 @@ void rt5665_micbias_output(int on)
 	struct snd_soc_codec *codec;
 
 	while(!g_rt5665->codec) {
-		pr_debug("%s g_rt5665->codec = null\n", __func__);
+		pr_debug("%s codec = null\n", __func__);
 		msleep(10);
 	}
 

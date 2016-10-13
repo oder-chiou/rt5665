@@ -1176,6 +1176,9 @@
 
 /* (0x006b) */
 #define RT5665_SYS_CLK_DET			15
+#define RT5665_HP_CLK_DET			14
+#define RT5665_MONO_CLK_DET			13
+#define RT5665_LOUT_CLK_DET			12
 #define RT5665_POW_CLK_DET			0
 
 /* Digital Microphone Control 1 (0x006e) */
