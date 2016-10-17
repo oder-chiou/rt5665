@@ -1118,9 +1118,9 @@ EXPORT_SYMBOL_GPL(rt5665_sel_asrc_clk_src);
 unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 {
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	unsigned int reg80;
+	unsigned int reg2a;
 	int i;
-	reg80 = snd_soc_read(codec, RT5665_GLB_CLK);
+
 	reg2a = snd_soc_read(codec, RT5665_STO1_DAC_MIXER);
 
 	snd_soc_dapm_force_enable_pin(dapm, "Vref1");
