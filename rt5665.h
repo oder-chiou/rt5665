@@ -1823,6 +1823,9 @@
 #define RT5665_4BTN_IL_MASK			(0x1 << 15)
 #define RT5665_4BTN_IL_EN			(0x1 << 15)
 #define RT5665_4BTN_IL_DIS			(0x0 << 15)
+#define RT5665_4BTN_IL_RST_MASK			(0x1 << 14)
+#define RT5665_4BTN_IL_NOR			(0x1 << 14)
+#define RT5665_4BTN_IL_RST			(0x0 << 14)
 
 /* Analog JD Control 1 (0x00f0) */
 #define RT5665_JD1_MODE_MASK			(0x3 << 0)
@@ -1986,6 +1989,7 @@ struct rt5665_priv {
 	struct snd_soc_jack *hs_jack;
 	struct delayed_work jack_detect_work;
 	struct delayed_work calibrate_work;
+	struct delayed_work jd_check_work;
 	struct mutex calibrate_mutex;
 
 	int sysclk;

@@ -8,7 +8,6 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#define DEBUG
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -1131,10 +1130,12 @@ unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_dapm_force_enable_pin(dapm, "CLKDET SYS");
 	snd_soc_dapm_force_enable_pin(dapm, "CLKDET HP");
 	snd_soc_dapm_sync(dapm);
-	snd_soc_write(codec, RT5665_STO2_ADC_MIXER, 0x6c6c);	//
+	snd_soc_write(codec, RT5665_STO2_ADC_MIXER, 0x6c6c); //
+	snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
+		RT5665_L_MUTE | RT5665_R_MUTE, 0); //
 	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x300, 0x300);
 	snd_soc_update_bits(codec, RT5665_ADDA_CLK_1, RT5665_I2S_PD1_MASK,
-		RT5665_I2S_PD1_2);	//
+		RT5665_I2S_PD1_2); //
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0x3320);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_1, 0x2400);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0101);
@@ -1193,15 +1194,18 @@ static void rt5665_enable_push_button_irq(struct snd_soc_codec *codec,
 	if (enable) {
 		snd_soc_write(codec, RT5665_4BTN_IL_CMD_1, 0x000b);
 		snd_soc_write(codec, RT5665_IL_CMD_1, 0x0048);
+		snd_soc_update_bits(codec, RT5665_4BTN_IL_CMD_2,
+				RT5665_4BTN_IL_MASK | RT5665_4BTN_IL_RST_MASK,
+				RT5665_4BTN_IL_EN | RT5665_4BTN_IL_NOR);
 		snd_soc_update_bits(codec, RT5665_IRQ_CTRL_3,
 				RT5665_IL_IRQ_MASK, RT5665_IL_IRQ_EN);
-		snd_soc_update_bits(codec, RT5665_4BTN_IL_CMD_2,
-				RT5665_4BTN_IL_MASK, RT5665_4BTN_IL_EN);
 	} else {
-		snd_soc_update_bits(codec, RT5665_4BTN_IL_CMD_2,
-				RT5665_4BTN_IL_MASK, RT5665_4BTN_IL_DIS);
 		snd_soc_update_bits(codec, RT5665_IRQ_CTRL_3,
 				RT5665_IL_IRQ_MASK, RT5665_IL_IRQ_DIS);
+		snd_soc_update_bits(codec, RT5665_4BTN_IL_CMD_2,
+				RT5665_4BTN_IL_MASK, RT5665_4BTN_IL_DIS);
+		snd_soc_update_bits(codec, RT5665_4BTN_IL_CMD_2,
+				RT5665_4BTN_IL_RST_MASK, RT5665_4BTN_IL_RST);
 	}
 }
 
@@ -1226,9 +1230,10 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_dapm_sync(dapm);
 
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-			RT5665_JD_MODE | 0x80, RT5665_JD_MODE | 0x80);
-		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_5,
-			0x700, 0x600);
+			RT5665_JD_MODE | 0x180, RT5665_JD_MODE| 0x180);
+ 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_4, 0);
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_5, 0x700,
+			0x600);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100,
 			0x100);
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
@@ -1276,6 +1281,25 @@ static irqreturn_t rt5665_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
+static void rt5665_jd_check_handler(struct work_struct *work)
+{
+	if (snd_soc_read(g_rt5665->codec, RT5665_AJD1_CTRL) & 0x0010) {
+		/* jack out */
+		g_rt5665->jack_type = rt5665_headset_detect(g_rt5665->codec, 0);
+#ifdef CONFIG_SWITCH
+		switch_set_state(&rt5665_headset_switch, 0);
+#endif
+		snd_soc_jack_report(g_rt5665->hs_jack, g_rt5665->jack_type,
+				SND_JACK_HEADSET |
+				SND_JACK_BTN_0 | SND_JACK_BTN_1 |
+				SND_JACK_BTN_2 | SND_JACK_BTN_3);
+
+	
+	} else {
+		schedule_delayed_work(&g_rt5665->jd_check_work, 500);
+	}
+}
+
 int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 	struct snd_soc_jack *hs_jack)
 {
@@ -1285,6 +1309,8 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 
 	switch (rt5665->pdata.jd_src) {
 	case RT5665_JD1_JD2:
+		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_1,
+			RT5665_GP1_PIN_MASK, RT5665_GP1_PIN_IRQ);
 		regmap_update_bits(rt5665->regmap, RT5665_RC_CLK_CTRL,
 				0xe000, 0xe000);
 		regmap_update_bits(rt5665->regmap, RT5665_PWR_ANLG_2,
@@ -1298,6 +1324,8 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 		break;
 
 	case RT5665_JD1:
+		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_1,
+			RT5665_GP1_PIN_MASK, RT5665_GP1_PIN_IRQ);
 		regmap_update_bits(rt5665->regmap, RT5665_RC_CLK_CTRL,
 				0xc000, 0xc000);
 		regmap_update_bits(rt5665->regmap, RT5665_PWR_ANLG_2,
@@ -1324,7 +1352,7 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 }
 EXPORT_SYMBOL_GPL(rt5665_set_jack_detect);
 
-static void rt5665_jack_detect_work(struct work_struct *work)
+static void rt5665_jack_detect_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
@@ -1401,6 +1429,12 @@ static void rt5665_jack_detect_work(struct work_struct *work)
 			SND_JACK_HEADSET |
 			SND_JACK_BTN_0 | SND_JACK_BTN_1 |
 			SND_JACK_BTN_2 | SND_JACK_BTN_3);
+
+	if (rt5665->jack_type & (SND_JACK_BTN_0 | SND_JACK_BTN_1 |
+		SND_JACK_BTN_2 | SND_JACK_BTN_3))
+		schedule_delayed_work(&rt5665->jd_check_work, 0);
+	else
+		cancel_delayed_work_sync(&rt5665->jd_check_work);
 
 	mutex_unlock(&rt5665->calibrate_mutex);
 }
@@ -2728,8 +2762,8 @@ static int rt5665_mono_event(struct snd_soc_dapm_widget *w,
 		break;
 
 	case SND_SOC_DAPM_POST_PMD:
-		snd_soc_update_bits(codec, RT5665_MONO_OUT, 0x20, 0x0);
-		snd_soc_update_bits(codec, RT5665_MONO_OUT, 0x10, 0x0);
+		snd_soc_update_bits(codec, RT5665_MONO_OUT, 0x20, 0);
+		snd_soc_update_bits(codec, RT5665_MONO_OUT, 0x10, 0);
 		snd_soc_update_bits(codec, RT5665_MONO_AMP_CALIB_CTRL_1, 0x40,
 			0x40);
 		snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
@@ -4876,16 +4910,14 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 	regmap_write(rt5665->regmap, RT5665_HP_LOGIC_CTRL_2, 0x0002);
 
-	/* Set GPIO1 as IRQ */
-	regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_1,
-		RT5665_GP1_PIN_MASK, RT5665_GP1_PIN_IRQ);
 	/* Enhance performance*/
 	regmap_update_bits(rt5665->regmap, RT5665_PWR_ANLG_1,
 		RT5665_HP_DRIVER_MASK | RT5665_LDO1_DVO_MASK,
 		RT5665_HP_DRIVER_5X | RT5665_LDO1_DVO_09);
 
-	INIT_DELAYED_WORK(&rt5665->jack_detect_work, rt5665_jack_detect_work);
+	INIT_DELAYED_WORK(&rt5665->jack_detect_work, rt5665_jack_detect_handler);
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
+	INIT_DELAYED_WORK(&rt5665->jd_check_work, rt5665_jd_check_handler);
 
 	mutex_init(&rt5665->calibrate_mutex);
 
