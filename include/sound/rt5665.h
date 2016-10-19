@@ -26,6 +26,7 @@ enum rt5665_dmic2_data_pin {
 enum rt5665_jd_src {
 	RT5665_JD_NULL,
 	RT5665_JD1,
+	RT5665_JD1_JD2,
 };
 
 struct rt5665_platform_data {
