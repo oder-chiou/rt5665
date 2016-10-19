@@ -1349,14 +1349,11 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 		break;
 
 	default:
-		dev_warn(codec->dev, "Currently, support JD1 only\n");
+		dev_warn(codec->dev, "Wrong JD source\n");
 		break;
 	}
 
 	rt5665->hs_jack = hs_jack;
-	rt5665->irq_work_delay_time = 0;
-
-	rt5665_irq(0, rt5665);
 
 	return 0;
 }
@@ -1367,8 +1364,6 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
 	int val, btn_type;
-
-	mutex_lock(&rt5665->calibrate_mutex);
 
 	val = snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & 0x0010;
 	if (!val) {
@@ -1435,8 +1430,6 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 		schedule_delayed_work(&rt5665->jd_check_work, 0);
 	else
 		cancel_delayed_work_sync(&rt5665->jd_check_work);
-
-	mutex_unlock(&rt5665->calibrate_mutex);
 }
 
 static const char *rt5665_jack_type_mode[] = {
@@ -4649,9 +4642,11 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 
 static void rt5665_calibrate(struct rt5665_priv *rt5665)
 {
-	int value, count;
+	struct snd_soc_codec *codec = rt5665->codec;
+	int value, count, ret;
 
-	mutex_lock(&rt5665->calibrate_mutex);
+	mutex_lock(&codec->mutex);
+	mutex_lock(&codec->component.card->dapm_mutex);
 
 	regcache_cache_bypass(rt5665->regmap, true);
 
@@ -4719,7 +4714,18 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 	regcache_mark_dirty(rt5665->regmap);
 	regcache_sync(rt5665->regmap);
 
-	mutex_unlock(&rt5665->calibrate_mutex);
+	mutex_unlock(&codec->component.card->dapm_mutex);
+	mutex_unlock(&codec->mutex);
+
+	if (rt5665->irq) {
+		rt5665_irq(0, rt5665);
+
+		ret = request_threaded_irq(rt5665->irq, NULL, rt5665_irq,
+			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
+			| IRQF_ONESHOT, "rt5665", rt5665);
+		if (ret)
+			dev_err(codec->dev, "Failed to reguest IRQ: %d\n", ret);
+	}
 }
 
 static void rt5665_calibrate_handler(struct work_struct *work)
@@ -4895,21 +4901,11 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
 	INIT_DELAYED_WORK(&rt5665->jd_check_work, rt5665_jd_check_handler);
 
-	mutex_init(&rt5665->calibrate_mutex);
-
 #ifdef CONFIG_SWITCH
 	switch_dev_register(&rt5665_headset_switch);
 #endif
-
-	if (i2c->irq) {
-		ret = request_threaded_irq(i2c->irq, NULL, rt5665_irq,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
-			| IRQF_ONESHOT, "rt5665", rt5665);
-		if (ret) {
-			dev_err(&i2c->dev, "Failed to reguest IRQ: %d\n", ret);
-			return ret;
-		}
-	}
+	if (i2c->irq)
+		rt5665->irq = i2c->irq;
 
 	return snd_soc_register_codec(&i2c->dev, &soc_codec_dev_rt5665,
 			rt5665_dai, ARRAY_SIZE(rt5665_dai));
