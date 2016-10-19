@@ -438,6 +438,7 @@ static const struct reg_default rt5665_reg[] = {
 
 static struct reg_default rt5665_init_list[] = {
 	{RT5665_BIAS_CUR_CTRL_8, 	0xa602},
+	{RT5665_TDM_CTRL_6, 		0x0101},
 	{RT5665_ASRC_8, 		0x0120},
 };
 
@@ -1118,10 +1119,12 @@ EXPORT_SYMBOL_GPL(rt5665_sel_asrc_clk_src);
 
 unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 {
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	unsigned int reg2a;
+	unsigned int reg1c, reg2a;
 	int i;
 
+	reg1c = snd_soc_read(codec, RT5665_STO1_ADC_DIG_VOL);
 	reg2a = snd_soc_read(codec, RT5665_STO1_DAC_MIXER);
 
 	snd_soc_dapm_force_enable_pin(dapm, "Vref1");
@@ -1132,6 +1135,12 @@ unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_dapm_force_enable_pin(dapm, "CLKDET SYS");
 	snd_soc_dapm_force_enable_pin(dapm, "CLKDET HP");
 	snd_soc_dapm_sync(dapm);
+
+	mutex_lock(&rt5665->codec->mutex);
+	mutex_lock(&rt5665->codec->component.card->dapm_mutex);
+
+	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
+		RT5665_L_MUTE | RT5665_R_MUTE, RT5665_L_MUTE | RT5665_R_MUTE);
 	snd_soc_write(codec, RT5665_STO2_ADC_MIXER, 0x6c6c); //
 	snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
 		RT5665_L_MUTE | RT5665_R_MUTE, 0); //
@@ -1166,6 +1175,10 @@ unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_1, 0x0000);
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0xb320);
 	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x300, 0);
+	snd_soc_write(codec, RT5665_STO1_ADC_DIG_VOL, reg1c);
+
+	mutex_unlock(&rt5665->codec->component.card->dapm_mutex);
+	mutex_unlock(&rt5665->codec->mutex);
 
 	snd_soc_dapm_disable_pin(dapm, "Vref1");
 	snd_soc_dapm_disable_pin(dapm, "Vref2");
@@ -1222,10 +1235,9 @@ static void rt5665_enable_push_button_irq(struct snd_soc_codec *codec,
  */
 static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	int val;
-
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	if (jack_insert) {
 		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
