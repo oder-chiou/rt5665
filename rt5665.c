@@ -989,7 +989,8 @@ static const struct snd_kcontrol_new rt5665_if3_adc_swap_mux =
 static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
 	int ret = snd_soc_put_volsw(kcontrol, ucontrol);
 
 	if (snd_soc_read(codec, RT5665_STO_NG2_CTRL_1) & RT5665_NG2_EN) {
@@ -1005,7 +1006,8 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 static int rt5665_mono_vol_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
 	int ret = snd_soc_put_volsw(kcontrol, ucontrol);
 
 	if (snd_soc_read(codec, RT5665_MONO_NG2_CTRL_1) & RT5665_NG2_EN) {
@@ -1363,7 +1365,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 		msleep(10);
 	}
 
-	while(!rt5665->codec->card->instantiated) {
+	while(!rt5665->codec->component.card->instantiated) {
 		pr_debug("%s\n", __func__);
 		msleep(10);
 	}
@@ -1456,7 +1458,8 @@ static int rt5665_jack_type_get(struct snd_kcontrol *kcontrol,
 static int rt5665_jack_type_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
 
 	rt5665_headset_detect(codec, ucontrol->value.integer.value[0]);
 
@@ -1476,7 +1479,8 @@ static int rt5665_button_type_get(struct snd_kcontrol *kcontrol,
 static int rt5665_button_type_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
 
 	rt5665_button_detect(codec);
 
@@ -1523,7 +1527,8 @@ static const SOC_ENUM_SINGLE_DECL(
 static int rt5665_clk_sel_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
-	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
 	unsigned int u_bit = 0, p_bit = 0;
 	unsigned int asrc2, asrc3;
 	int ret;
@@ -1584,7 +1589,7 @@ static int rt5665_clk_sel_put(struct snd_kcontrol *kcontrol,
 					RT5665_ASRC_1, u_bit, u_bit);
 			break;
 		default: /*disable*/
-			ret = snd_soc_put_value_enum_double(kcontrol, ucontrol);
+			ret = snd_soc_put_enum_double(kcontrol, ucontrol);
 
 			asrc2 = snd_soc_read(codec, RT5665_ASRC_2);
 			asrc3 = snd_soc_read(codec, RT5665_ASRC_3);
@@ -1649,7 +1654,7 @@ static int rt5665_clk_sel_put(struct snd_kcontrol *kcontrol,
 		}
 	}
 
-	return snd_soc_put_value_enum_double(kcontrol, ucontrol);
+	return snd_soc_put_enum_double(kcontrol, ucontrol);
 }
 
 static const struct snd_kcontrol_new rt5665_snd_controls[] = {
@@ -4439,7 +4444,7 @@ void rt5665_micbias_output(int on)
 		msleep(10);
 	}
 
-	while(!g_rt5665->codec->card->instantiated) {
+	while(!g_rt5665->codec->component.card->instantiated) {
 		pr_debug("%s\n", __func__);
 		msleep(10);
 	}
@@ -4751,7 +4756,7 @@ static void rt5665_calibrate_handler(struct work_struct *work)
 	struct rt5665_priv *rt5665 = container_of(work, struct rt5665_priv,
 		calibrate_work.work);
 
-	while(!rt5665->codec->card->instantiated) {
+	while(!rt5665->codec->component.card->instantiated) {
 		pr_debug("%s\n", __func__);
 		msleep(10);
 	}
