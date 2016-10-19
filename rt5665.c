@@ -1319,8 +1319,6 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
-	mutex_lock(&rt5665->calibrate_mutex);
-
 	switch (rt5665->pdata.jd_src) {
 	case RT5665_JD1_JD2:
 		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_1,
@@ -1360,8 +1358,6 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 
 	rt5665_irq(0, rt5665);
 
-	mutex_unlock(&rt5665->calibrate_mutex);
-
 	return 0;
 }
 EXPORT_SYMBOL_GPL(rt5665_set_jack_detect);
@@ -1371,16 +1367,6 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
 	int val, btn_type;
-
-	while(!rt5665->codec) {
-		pr_debug("%s codec = null\n", __func__);
-		msleep(10);
-	}
-
-	while(!rt5665->codec->component.card->instantiated) {
-		pr_debug("%s\n", __func__);
-		msleep(10);
-	}
 
 	mutex_lock(&rt5665->calibrate_mutex);
 
@@ -4447,33 +4433,6 @@ static int rt5665_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
-void rt5665_micbias_output(int on)
-{
-	struct snd_soc_codec *codec;
-
-	while(!g_rt5665->codec) {
-		pr_debug("%s codec = null\n", __func__);
-		msleep(10);
-	}
-
-	while(!g_rt5665->codec->component.card->instantiated) {
-		pr_debug("%s\n", __func__);
-		msleep(10);
-	}
-
-	mutex_lock(&g_rt5665->calibrate_mutex);
-
-	codec = g_rt5665->codec;
-
-	if (on)
-		snd_soc_dapm_force_enable_pin(&codec->dapm, "MICBIAS1");
-	else
-		snd_soc_dapm_disable_pin(&codec->dapm, "MICBIAS1");
-
-	mutex_unlock(&g_rt5665->calibrate_mutex);
-}
-EXPORT_SYMBOL(rt5665_micbias_output);
-
 static int rt5665_probe(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
@@ -4768,7 +4727,7 @@ static void rt5665_calibrate_handler(struct work_struct *work)
 	struct rt5665_priv *rt5665 = container_of(work, struct rt5665_priv,
 		calibrate_work.work);
 
-	while(!rt5665->codec->component.card->instantiated) {
+	while (!rt5665->codec->component.card->instantiated) {
 		pr_debug("%s\n", __func__);
 		msleep(10);
 	}
