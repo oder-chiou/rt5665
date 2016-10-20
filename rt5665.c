@@ -1207,6 +1207,8 @@ static int rt5665_button_detect(struct snd_soc_codec *codec)
 static void rt5665_enable_push_button_irq(struct snd_soc_codec *codec,
 	bool enable)
 {
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
 	if (enable) {
 		snd_soc_write(codec, RT5665_4BTN_IL_CMD_1, 0x000b);
 		snd_soc_write(codec, RT5665_IL_CMD_1, 0x0048);
@@ -1215,6 +1217,9 @@ static void rt5665_enable_push_button_irq(struct snd_soc_codec *codec,
 				RT5665_4BTN_IL_EN | RT5665_4BTN_IL_NOR);
 		snd_soc_update_bits(codec, RT5665_IRQ_CTRL_3,
 				RT5665_IL_IRQ_MASK, RT5665_IL_IRQ_EN);
+		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+			snd_soc_update_bits(codec, RT5665_IRQ_CTRL_6, 0x100,
+				0x100);
 	} else {
 		snd_soc_update_bits(codec, RT5665_IRQ_CTRL_3,
 				RT5665_IL_IRQ_MASK, RT5665_IL_IRQ_DIS);
@@ -1244,23 +1249,30 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
 		snd_soc_dapm_sync(dapm);
 
+		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_4, 0);
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-			RT5665_JD_MODE | 0x180, RT5665_JD_MODE| 0x180);
- 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_4, 0);
+			RT5665_JD_MODE | 0x180, RT5665_JD_MODE| 0x080);
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_5, 0x700,
 			0x600);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100,
 			0x100);
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
-		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
+
 
 		rt5665_imp_detect(codec);
 
+		msleep(200);
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+			0x100, 0x100);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
+
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
+
 		sar_hs_type = rt5665->pdata.sar_hs_type ?
 			rt5665->pdata.sar_hs_type : 729;
-			
+
 		if (sar_adc_value > sar_hs_type) {
 			rt5665->jack_type = SND_JACK_HEADSET;
 			rt5665_enable_push_button_irq(codec, true);
@@ -1273,6 +1285,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
 			snd_soc_dapm_sync(dapm);
 		}
+
 	} else {
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100, 0);
@@ -1334,9 +1347,11 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 		regmap_update_bits(rt5665->regmap, RT5665_PWR_ANLG_2,
 			RT5665_PWR_JD1 | RT5665_PWR_JD2,
 			RT5665_PWR_JD1 | RT5665_PWR_JD2);
-		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_1, 0x9, 0x9);
-		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_2, 0xc000,
-			0xc000);
+		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_1, 0xb, 0xb);
+		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_2, 0xc800,
+			0xc800);
+		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_6, 0x2000,
+			0x2000);
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_OSW_L_MASK, RT5665_OSW_L_DIS);
 		break;
@@ -1369,9 +1384,14 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
-	int val, btn_type;
+	int val, btn_type, mask;
 
-	val = snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & 0x0010;
+	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+		mask = 0x1010;
+	else
+		mask = 0x0010;
+
+	val = snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask;
 	if (!val) {
 		/* jack in */
 		if (rt5665->jack_type == 0) {
@@ -2176,7 +2196,7 @@ static const SOC_ENUM_SINGLE_DECL(
 	RT5665_STO1_ADC1R_SRC_SFT, rt5665_sto1_adc1_src);
 
 static const struct snd_kcontrol_new rt5665_sto1_adc1r_mux =
-	SOC_DAPM_ENUM("Stereo1 ADC1L Source", rt5665_sto1_adc1r_enum);
+	SOC_DAPM_ENUM("Stereo1 ADC1R Source", rt5665_sto1_adc1r_enum);
 
 /* STO1 ADC Source */
 /* MX-26 [11:10] [3:2] */
@@ -4664,6 +4684,7 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 {
 	struct snd_soc_codec *codec = rt5665->codec;
 	int value, count, ret;
+	unsigned long irq_flags;
 
 	mutex_lock(&codec->component.card->dapm_mutex);
 
@@ -4738,9 +4759,14 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 	if (rt5665->irq) {
 		rt5665_irq(0, rt5665);
 
+		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+			irq_flags = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
+		else
+			irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
+				IRQF_ONESHOT;
+
 		ret = request_threaded_irq(rt5665->irq, NULL, rt5665_irq,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING
-			| IRQF_ONESHOT, "rt5665", rt5665);
+			irq_flags, "rt5665", rt5665);
 		if (ret)
 			dev_err(codec->dev, "Failed to reguest IRQ: %d\n", ret);
 	}
@@ -4768,7 +4794,7 @@ static ssize_t rt5665_device_read(struct file *file, char __user * buffer,
 	if (*offset > 0)
 		return 0;
 
-	ret = sprintf(sar_adc_string, "%d", sar_adc_value);
+	ret = sprintf(sar_adc_string, "%d\n", sar_adc_value);
 
 	if (copy_to_user(buffer, sar_adc_string, ret))
 		return -EFAULT;
