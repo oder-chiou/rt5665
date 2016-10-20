@@ -1117,7 +1117,7 @@ int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
 }
 EXPORT_SYMBOL_GPL(rt5665_sel_asrc_clk_src);
 
-unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
+static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
@@ -1136,8 +1136,7 @@ unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_dapm_force_enable_pin(dapm, "CLKDET HP");
 	snd_soc_dapm_sync(dapm);
 
-	mutex_lock(&rt5665->codec->mutex);
-	mutex_lock(&rt5665->codec->component.card->dapm_mutex);
+	mutex_lock(&codec->component.card->dapm_mutex);
 
 	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
 		RT5665_L_MUTE | RT5665_R_MUTE, RT5665_L_MUTE | RT5665_R_MUTE);
@@ -1177,8 +1176,7 @@ unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x300, 0);
 	snd_soc_write(codec, RT5665_STO1_ADC_DIG_VOL, reg1c);
 
-	mutex_unlock(&rt5665->codec->component.card->dapm_mutex);
-	mutex_unlock(&rt5665->codec->mutex);
+	mutex_unlock(&codec->component.card->dapm_mutex);
 
 	snd_soc_dapm_disable_pin(dapm, "Vref1");
 	snd_soc_dapm_disable_pin(dapm, "Vref2");
@@ -4645,7 +4643,6 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 	struct snd_soc_codec *codec = rt5665->codec;
 	int value, count, ret;
 
-	mutex_lock(&codec->mutex);
 	mutex_lock(&codec->component.card->dapm_mutex);
 
 	regcache_cache_bypass(rt5665->regmap, true);
@@ -4715,7 +4712,6 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 	regcache_sync(rt5665->regmap);
 
 	mutex_unlock(&codec->component.card->dapm_mutex);
-	mutex_unlock(&codec->mutex);
 
 	if (rt5665->irq) {
 		rt5665_irq(0, rt5665);
@@ -4904,6 +4900,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 #ifdef CONFIG_SWITCH
 	switch_dev_register(&rt5665_headset_switch);
 #endif
+
 	if (i2c->irq)
 		rt5665->irq = i2c->irq;
 
