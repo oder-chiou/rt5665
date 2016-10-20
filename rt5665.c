@@ -1234,7 +1234,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	int val;
+	unsigned int sar_hs_type;
 
 	if (jack_insert) {
 		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
@@ -1251,9 +1251,12 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
 		msleep(100);
-		val = snd_soc_read(codec, RT5665_SAR_IL_CMD_4);
-
-		if ((val & 0x7ff) >= 800) {
+		rt5665->sar_adc_value = snd_soc_read(rt5665->codec,
+			RT5665_SAR_IL_CMD_4) & 0x7ff;
+		sar_hs_type = rt5665->pdata.sar_hs_type ?
+			rt5665->pdata.sar_hs_type : 729;
+			
+		if (rt5665->sar_adc_value > sar_hs_type) {
 			rt5665->jack_type = SND_JACK_HEADSET;
 			rt5665_enable_push_button_irq(codec, true);
 		} else {
@@ -1378,6 +1381,9 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
 		} else {
+			rt5665->sar_adc_value = snd_soc_read(rt5665->codec,
+				RT5665_SAR_IL_CMD_4) & 0x7ff;
+
 			/* jack is already in, report button event */
 			rt5665->jack_type = SND_JACK_HEADSET;
 			btn_type = rt5665_button_detect(rt5665->codec);
@@ -4637,6 +4643,17 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	rt5665->pdata.ldo1_en = of_get_named_gpio(dev->of_node,
 		"realtek,ldo1_en", 0);
 
+	of_property_read_u32(dev->of_node, "realtek,sar-hs-type",
+		&rt5665->pdata.sar_hs_type);
+	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth0",
+		&rt5665->pdata.sar_pb_vth0);
+	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth1",
+		&rt5665->pdata.sar_pb_vth1);
+	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth2",
+		&rt5665->pdata.sar_pb_vth2);
+	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth3",
+		&rt5665->pdata.sar_pb_vth3);
+
 	return 0;
 }
 
@@ -4885,6 +4902,22 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 		}
 	}
+
+	if (rt5665->pdata.sar_pb_vth0)
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_8,
+			rt5665->pdata.sar_pb_vth0);
+
+	if (rt5665->pdata.sar_pb_vth1)
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_7,
+			rt5665->pdata.sar_pb_vth1);
+
+	if (rt5665->pdata.sar_pb_vth2)
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_6,
+			rt5665->pdata.sar_pb_vth2);
+
+	if (rt5665->pdata.sar_pb_vth3)
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_5,
+			rt5665->pdata.sar_pb_vth3);
 
 	regmap_write(rt5665->regmap, RT5665_HP_LOGIC_CTRL_2, 0x0002);
 

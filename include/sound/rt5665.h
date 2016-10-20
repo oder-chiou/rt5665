@@ -44,6 +44,12 @@ struct rt5665_platform_data {
 	enum rt5665_dmic1_data_pin dmic1_data_pin;
 	enum rt5665_dmic2_data_pin dmic2_data_pin;
 	enum rt5665_jd_src jd_src;
+
+	unsigned int sar_hs_type;
+	unsigned int sar_pb_vth0;
+	unsigned int sar_pb_vth1;
+	unsigned int sar_pb_vth2;
+	unsigned int sar_pb_vth3;
 };
 
 #endif
