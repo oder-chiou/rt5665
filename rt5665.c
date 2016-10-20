@@ -43,8 +43,6 @@ static struct switch_dev rt5665_headset_switch = {
 };
 #endif
 
-static struct rt5665_priv *g_rt5665;
-
 static const struct reg_default rt5665_reg[] = {
 	{0x0000, 0x0000},
 	{0x0001, 0xc8c8},
@@ -1159,7 +1157,8 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 		msleep(20);
 
 		if (!(snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_12) & 0x8000)) {
-			snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_14);
+			rt5665->hp_imp_value =
+				snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_14);
 			break;
 		}
 	}
@@ -1295,20 +1294,23 @@ static irqreturn_t rt5665_irq(int irq, void *data)
 
 static void rt5665_jd_check_handler(struct work_struct *work)
 {
-	if (snd_soc_read(g_rt5665->codec, RT5665_AJD1_CTRL) & 0x0010) {
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, jd_check_work.work);
+
+	if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & 0x0010) {
 		/* jack out */
-		g_rt5665->jack_type = rt5665_headset_detect(g_rt5665->codec, 0);
+		rt5665->jack_type = rt5665_headset_detect(rt5665->codec, 0);
 #ifdef CONFIG_SWITCH
 		switch_set_state(&rt5665_headset_switch, 0);
 #endif
-		snd_soc_jack_report(g_rt5665->hs_jack, g_rt5665->jack_type,
+		snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
 				SND_JACK_HEADSET |
 				SND_JACK_BTN_0 | SND_JACK_BTN_1 |
 				SND_JACK_BTN_2 | SND_JACK_BTN_3);
 
 	
 	} else {
-		schedule_delayed_work(&g_rt5665->jd_check_work, 500);
+		schedule_delayed_work(&rt5665->jd_check_work, 500);
 	}
 }
 
@@ -4795,8 +4797,6 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 			ret);
 		return ret;
 	}
-
-	g_rt5665 = rt5665;
 
 	regmap_read(rt5665->regmap, RT5665_DEVICE_ID, &val);
 	if (val != RT5665_6_8_DEVICE_ID) {

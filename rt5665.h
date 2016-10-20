@@ -2006,6 +2006,7 @@ struct rt5665_priv {
 	int jack_type;
 	int irq;
 	int irq_work_delay_time;
+	int hp_imp_value;
 };
 
 int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
