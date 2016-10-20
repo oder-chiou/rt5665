@@ -21,6 +21,8 @@
 #include <linux/of_gpio.h>
 #include <linux/mutex.h>
 #include <linux/regulator/consumer.h>
+#include <linux/slab.h>
+#include <linux/cdev.h>
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
@@ -36,6 +38,8 @@
 
 #include "rl6231.h"
 #include "rt5665.h"
+
+static unsigned int sar_adc_value;
 
 #ifdef CONFIG_SWITCH
 static struct switch_dev rt5665_headset_switch = {
@@ -1251,12 +1255,12 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
 		msleep(100);
-		rt5665->sar_adc_value = snd_soc_read(rt5665->codec,
+		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
 		sar_hs_type = rt5665->pdata.sar_hs_type ?
 			rt5665->pdata.sar_hs_type : 729;
 			
-		if (rt5665->sar_adc_value > sar_hs_type) {
+		if (sar_adc_value > sar_hs_type) {
 			rt5665->jack_type = SND_JACK_HEADSET;
 			rt5665_enable_push_button_irq(codec, true);
 		} else {
@@ -1381,7 +1385,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
 		} else {
-			rt5665->sar_adc_value = snd_soc_read(rt5665->codec,
+			sar_adc_value = snd_soc_read(rt5665->codec,
 				RT5665_SAR_IL_CMD_4) & 0x7ff;
 
 			/* jack is already in, report button event */
@@ -4756,6 +4760,36 @@ static void rt5665_calibrate_handler(struct work_struct *work)
 	rt5665_calibrate(rt5665);
 }
 
+static ssize_t rt5665_device_read(struct file *file, char __user * buffer,
+	size_t length, loff_t * offset)
+{
+	char sar_adc_string[5];
+	size_t ret;
+
+	if (*offset > 0)
+		return 0;
+
+	ret = sprintf(sar_adc_string, "%d", sar_adc_value);
+
+	if (copy_to_user(buffer, sar_adc_string, ret))
+		return -EFAULT;
+
+	*offset += ret;
+
+	return ret;
+}
+
+struct file_operations rt5665_fops = {
+	.owner = THIS_MODULE,
+	.read = rt5665_device_read,
+};
+
+static struct miscdevice rt5665_mic_adc_dev = {
+	.minor = MISC_DYNAMIC_MINOR,
+	.name = "ear_mic_adc",
+	.fops = &rt5665_fops
+};
+
 static int rt5665_i2c_probe(struct i2c_client *i2c,
 		    const struct i2c_device_id *id)
 {
@@ -4936,6 +4970,10 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 	if (i2c->irq)
 		rt5665->irq = i2c->irq;
+
+	ret = misc_register(&rt5665_mic_adc_dev);
+	if (ret)
+		dev_err(&i2c->dev, "Couldn't register control device\n");
 
 	return snd_soc_register_codec(&i2c->dev, &soc_codec_dev_rt5665,
 			rt5665_dai, ARRAY_SIZE(rt5665_dai));
