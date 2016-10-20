@@ -4983,6 +4983,8 @@ static int rt5665_i2c_remove(struct i2c_client *i2c)
 {
 	snd_soc_unregister_codec(&i2c->dev);
 
+	misc_deregister(&rt5665_mic_adc_dev);
+
 #ifdef CONFIG_SWITCH
 	switch_dev_unregister(&rt5665_headset_switch);
 #endif
