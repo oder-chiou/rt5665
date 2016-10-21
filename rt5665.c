@@ -1251,14 +1251,13 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_4, 0);
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-			RT5665_JD_MODE | 0x180, RT5665_JD_MODE| 0x080);
+			RT5665_JD_MODE | 0x180, RT5665_JD_MODE | 0x080);
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_5, 0x700,
 			0x600);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100,
 			0x100);
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
-
 
 		rt5665_imp_detect(codec);
 
@@ -1285,7 +1284,6 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
 			snd_soc_dapm_sync(dapm);
 		}
-
 	} else {
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100, 0);
@@ -1326,8 +1324,6 @@ static void rt5665_jd_check_handler(struct work_struct *work)
 				SND_JACK_HEADSET |
 				SND_JACK_BTN_0 | SND_JACK_BTN_1 |
 				SND_JACK_BTN_2 | SND_JACK_BTN_3);
-
-	
 	} else {
 		schedule_delayed_work(&rt5665->jd_check_work, 500);
 	}
@@ -4455,11 +4451,205 @@ static int rt5665_set_bias_level(struct snd_soc_codec *codec,
 	return 0;
 }
 
+#define RT5665_REG_DISP_LEN 12
+static ssize_t rt5665_codec_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct rt5665_priv *rt5665 = i2c_get_clientdata(client);
+	struct snd_soc_codec *codec = rt5665->codec;
+	unsigned int val;
+	int cnt = 0, i;
+
+	for (i = 0; i <= RT5665_R_EQ_POST_VOL; i++) {
+		if (cnt + RT5665_REG_DISP_LEN >= PAGE_SIZE)
+			break;
+
+		if (rt5665_readable_register(NULL, i)) {
+			val = snd_soc_read(codec, i);
+			if (!val)
+				continue;
+			cnt += snprintf(buf + cnt, RT5665_REG_DISP_LEN,
+					 "%04x: %04x\n", i, val);
+		}
+	}
+
+	if (cnt >= PAGE_SIZE)
+		cnt = PAGE_SIZE - 1;
+
+	return cnt;
+}
+
+static ssize_t rt5665_codec_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct rt5665_priv *rt5665 = i2c_get_clientdata(client);
+	struct snd_soc_codec *codec = rt5665->codec;
+	unsigned int val = 0, addr = 0;
+	int i;
+
+	pr_debug("register \"%s\" count=%zu\n", buf, count);
+	for (i = 0; i < count; i++) {	/*address */
+		if (*(buf + i) <= '9' && *(buf + i) >= '0')
+			addr = (addr << 4) | (*(buf + i) - '0');
+		else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+			addr = (addr << 4) | ((*(buf + i) - 'a') + 0xa);
+		else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+			addr = (addr << 4) | ((*(buf + i) - 'A') + 0xa);
+		else
+			break;
+	}
+
+	for (i = i + 1; i < count; i++) {
+		if (*(buf + i) <= '9' && *(buf + i) >= '0')
+			val = (val << 4) | (*(buf + i) - '0');
+		else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+			val = (val << 4) | ((*(buf + i) - 'a') + 0xa);
+		else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+			val = (val << 4) | ((*(buf + i) - 'A') + 0xa);
+		else
+			break;
+	}
+	pr_debug("addr=0x%x val=0x%x\n", addr, val);
+	if (addr > RT5665_R_EQ_POST_VOL || val > 0xffff || val < 0)
+		return count;
+
+	if (i == count) {
+		pr_debug("0x%04x = 0x%04x\n", addr,
+			 snd_soc_read(codec, addr));
+	} else {
+		snd_soc_write(codec, addr, val);
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(codec_reg, 0664, rt5665_codec_show, rt5665_codec_store);
+
+static ssize_t rt5665_codec_adb_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct rt5665_priv *rt5665 = i2c_get_clientdata(client);
+	struct snd_soc_codec *codec = rt5665->codec;
+	unsigned int val;
+	int cnt = 0, i;
+
+	for (i = 0; i < rt5665->adb_reg_num; i++) {
+		if (cnt + RT5665_REG_DISP_LEN >= PAGE_SIZE)
+			break;
+		val = snd_soc_read(codec, rt5665->adb_reg_addr[i]);
+		cnt += snprintf(buf + cnt, RT5665_REG_DISP_LEN, "%04x: %04x\n",
+			rt5665->adb_reg_addr[i], val);
+	}
+
+	return cnt;
+}
+
+static ssize_t rt5665_codec_adb_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct rt5665_priv *rt5665 = i2c_get_clientdata(client);
+	struct snd_soc_codec *codec = rt5665->codec;
+	unsigned int value = 0;
+	int i = 2, j = 0;
+
+	if (buf[0] == 'R' || buf[0] == 'r') {
+		while (j < 0x100 && i < count) {
+			rt5665->adb_reg_addr[j] = 0;
+			value = 0;
+			for ( ; i < count; i++) {
+				if (*(buf + i) <= '9' && *(buf + i) >= '0')
+					value = (value << 4) | (*(buf + i) - '0');
+				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+					value = (value << 4) | ((*(buf + i) - 'a') + 0xa);
+				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+					value = (value << 4) | ((*(buf + i) - 'A') + 0xa);
+				else
+					break;
+			}
+			i++;
+
+			rt5665->adb_reg_addr[j] = value;
+			j++;
+		}
+		rt5665->adb_reg_num = j;
+	} else if (buf[0] == 'W' || buf[0] == 'w') {
+		while (j < 0x100 && i < count) {
+			/* Get address */
+			rt5665->adb_reg_addr[j] = 0;
+			value = 0;
+			for ( ; i < count; i++) {
+				if (*(buf + i) <= '9' && *(buf + i) >= '0')
+					value = (value << 4) | (*(buf + i) - '0');
+				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+					value = (value << 4) | ((*(buf + i) - 'a') + 0xa);
+				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+					value = (value << 4) | ((*(buf + i) - 'A') + 0xa);
+				else
+					break;
+			}
+			i++;
+			rt5665->adb_reg_addr[j] = value;
+
+			/* Get value */
+			rt5665->adb_reg_value[j] = 0;
+			value = 0;
+			for ( ; i < count; i++) {
+				if (*(buf + i) <= '9' && *(buf + i) >= '0')
+					value = (value << 4) | (*(buf + i) - '0');
+				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
+					value = (value << 4) | ((*(buf + i) - 'a') + 0xa);
+				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
+					value = (value << 4) | ((*(buf + i) - 'A') + 0xa);
+				else
+					break;
+			}
+			i++;
+			rt5665->adb_reg_value[j] = value;
+
+			j++;
+		}
+
+		rt5665->adb_reg_num = j;
+
+		for (i = 0; i < rt5665->adb_reg_num; i++) {
+			snd_soc_write(codec,
+				rt5665->adb_reg_addr[i] & 0xffff,
+				rt5665->adb_reg_value[i]);
+		}
+
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(codec_reg_adb, 0664, rt5665_codec_adb_show,
+			rt5665_codec_adb_store);
+
 static int rt5665_probe(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+	int ret;
 
 	rt5665->codec = codec;
+
+	ret = device_create_file(codec->dev, &dev_attr_codec_reg);
+	if (ret != 0) {
+		dev_err(codec->dev,
+			"Failed to create codec_reg sysfs files: %d\n", ret);
+		return ret;
+	}
+
+	ret = device_create_file(codec->dev, &dev_attr_codec_reg_adb);
+	if (ret != 0) {
+		dev_err(codec->dev,
+			"Failed to create codec_reg_adb sysfs files: %d\n", ret);
+		return ret;
+	}
 
 	schedule_delayed_work(&rt5665->calibrate_work, msecs_to_jiffies(100));
 
@@ -4471,6 +4661,8 @@ static int rt5665_remove(struct snd_soc_codec *codec)
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	regmap_write(rt5665->regmap, RT5665_RESET, 0);
+	device_remove_file(codec->dev, &dev_attr_codec_reg);
+	device_remove_file(codec->dev, &dev_attr_codec_reg_adb);
 
 	return 0;
 }

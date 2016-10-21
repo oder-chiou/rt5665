@@ -2007,6 +2007,10 @@ struct rt5665_priv {
 	int irq;
 	int irq_work_delay_time;
 	int hp_imp_value;
+
+	unsigned int adb_reg_addr[0x100];
+	unsigned int adb_reg_value[0x100];
+	unsigned short adb_reg_num;
 };
 
 int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
