@@ -1797,6 +1797,7 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -1806,8 +1807,10 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK,
-			RT5665_PM_HP_LV | RT5665_OSW_L_DIS);
+			RT5665_PM_HP_MASK, RT5665_PM_HP_LV);
+		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+				RT5665_OSW_L_MASK, RT5665_OSW_L_DIS);
 		break;
 	default:
 		return 0;
