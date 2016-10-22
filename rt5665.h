@@ -1990,7 +1990,6 @@ struct rt5665_priv {
 	struct delayed_work jack_detect_work;
 	struct delayed_work calibrate_work;
 	struct delayed_work jd_check_work;
-	struct mutex calibrate_mutex;
 
 	int sysclk;
 	int sysclk_src;
