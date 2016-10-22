@@ -2936,6 +2936,23 @@ static int rt5655_set_verf(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+static int rt5665_micbias2_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		snd_soc_update_bits(codec,  RT5665_EJD_CTRL_1, 0x80, 0);
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 0;
+
+}
 
 static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("LDO2", RT5665_PWR_ANLG_3, RT5665_PWR_LDO2_BIT, 0,
@@ -2985,7 +3002,7 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("MICBIAS1", RT5665_PWR_ANLG_2, RT5665_PWR_MB1_BIT,
 		0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("MICBIAS2", RT5665_PWR_ANLG_2, RT5665_PWR_MB2_BIT,
-		0, NULL, 0),
+		0, rt5665_micbias2_event, SND_SOC_DAPM_PRE_PMU),
 	SND_SOC_DAPM_SUPPLY("MICBIAS3", RT5665_PWR_ANLG_2, RT5665_PWR_MB3_BIT,
 		0, NULL, 0),
 
