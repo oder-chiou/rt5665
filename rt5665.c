@@ -1313,8 +1313,14 @@ static void rt5665_jd_check_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jd_check_work.work);
+	int mask;
 
-	if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & 0x0010) {
+	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+		mask = 0x1010;
+	else
+		mask = 0x0010;
+
+	if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask) {
 		/* jack out */
 		rt5665->jack_type = rt5665_headset_detect(rt5665->codec, 0);
 #ifdef CONFIG_SWITCH
@@ -4964,6 +4970,11 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 			irq_flags, "rt5665", rt5665);
 		if (ret)
 			dev_err(codec->dev, "Failed to reguest IRQ: %d\n", ret);
+
+		ret = irq_set_irq_wake(rt5665->irq, 1);
+		if (ret)
+			dev_err(codec->dev, "Failed to reguest IRQ wake: %d\n",
+				ret);
 	}
 }
 
