@@ -1261,7 +1261,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 
 		rt5665_imp_detect(codec);
 
-		msleep(200);
+		msleep(400);
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
 			0x100, 0x100);
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
