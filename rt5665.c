@@ -3498,11 +3498,6 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"CLKDET MONO", NULL, "CLKDET"},
 	{"CLKDET LOUT", NULL, "CLKDET"},
 
-	{"IN1P", NULL, "LDO2"},
-	{"IN2P", NULL, "LDO2"},
-	{"IN3P", NULL, "LDO2"},
-	{"IN4P", NULL, "LDO2"},
-
 	{"DMIC1", NULL, "DMIC L1"},
 	{"DMIC1", NULL, "DMIC R1"},
 	{"DMIC2", NULL, "DMIC L2"},
@@ -4696,11 +4691,21 @@ static int rt5665_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5665_suspend(struct snd_soc_codec *codec)
 {
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	snd_soc_dapm_force_enable_pin(dapm, "LDO2");
+	snd_soc_dapm_sync(dapm);
+
 	return 0;
 }
 
 static int rt5665_resume(struct snd_soc_codec *codec)
 {
+	struct snd_soc_dapm_context *dapm = &codec->dapm;
+
+	snd_soc_dapm_disable_pin(dapm, "LDO2");
+	snd_soc_dapm_sync(dapm);
+
 	return 0;
 }
 #else
