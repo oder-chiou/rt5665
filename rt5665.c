@@ -4696,20 +4696,11 @@ static int rt5665_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5665_suspend(struct snd_soc_codec *codec)
 {
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-
-	regcache_cache_only(rt5665->regmap, true);
-	regcache_mark_dirty(rt5665->regmap);
 	return 0;
 }
 
 static int rt5665_resume(struct snd_soc_codec *codec)
 {
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-
-	regcache_cache_only(rt5665->regmap, false);
-	regcache_sync(rt5665->regmap);
-
 	return 0;
 }
 #else
