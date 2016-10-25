@@ -1121,8 +1121,6 @@ EXPORT_SYMBOL_GPL(rt5665_sel_asrc_clk_src);
 
 static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
 {
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-
 	if (enable) {
 		snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET,
 			0x8000, 0x8000);
@@ -4714,20 +4712,12 @@ static int rt5665_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5665_suspend(struct snd_soc_codec *codec)
 {
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
-
-	snd_soc_dapm_force_enable_pin(dapm, "LDO2");
-	snd_soc_dapm_sync(dapm);
-
 	return 0;
 }
 
 static int rt5665_resume(struct snd_soc_codec *codec)
 {
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-
-	snd_soc_dapm_disable_pin(dapm, "LDO2");
-	snd_soc_dapm_sync(dapm);
 
 	return 0;
 }
