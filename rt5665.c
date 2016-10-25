@@ -1119,6 +1119,27 @@ int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
 }
 EXPORT_SYMBOL_GPL(rt5665_sel_asrc_clk_src);
 
+static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
+{
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	if (enable) {
+		snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET,
+			0x8000, 0x8000);
+		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL1,
+			0x8000, 0x8000);
+		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL5,
+			0x3000, 0x3000);
+	} else {
+		snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET,
+			0x8000, 0x0000);
+		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL1,
+			0x8000, 0x0000);
+		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL5,
+			0x3000, 0x0000);
+	}
+}
+
 static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
@@ -2820,6 +2841,7 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0003);
 		snd_soc_update_bits(codec, RT5665_HP_CTRL_2, RT5665_VOL_L_MUTE,
 			RT5665_VOL_L_MUTE);
+		rt5665_noise_gate(codec, true);
 		break;
 
 	case SND_SOC_DAPM_POST_PMD:
@@ -2828,6 +2850,7 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0002);
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
 			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
+		rt5665_noise_gate(codec, false);
 		break;
 
 	default:
