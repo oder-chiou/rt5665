@@ -47,6 +47,19 @@ static struct switch_dev rt5665_headset_switch = {
 };
 #endif
 
+static struct {
+	int min;           /* Minimum impedance */
+	int max;           /* Maximum impedance */
+	unsigned int gain; /* Register value to set for this measurement */
+	unsigned int bias;
+} hp_gain_table[] = {
+	{   0,   10,   9,  5 },
+	{   11,  21,   5,  5 },
+	{   22,  85,   1,  5 },
+	{   86,  839,  0,  1 },
+	{   840, 1023, 0,  1 },
+};
+
 static const struct reg_default rt5665_reg[] = {
 	{0x0000, 0x0000},
 	{0x0001, 0xc8c8},
@@ -994,7 +1007,33 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
-	int ret = snd_soc_put_volsw(kcontrol, ucontrol);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+	int reg05, reg06;
+	int ret;
+	
+	mutex_lock(&codec->component.card->dapm_mutex);
+
+	if (rt5665->impedance_gain_map == true) {
+		reg05 = ucontrol->value.integer.value[0];
+		reg06 = ucontrol->value.integer.value[1];
+
+		dev_dbg(codec->dev, "%s  %d Impedance value\n",__func__,
+			rt5665->impedance_value);
+		if (reg05 > rt5665->impedance_gain) {
+			reg05 = reg05 - rt5665->impedance_gain;
+		} else {
+			reg05 = 0x0;
+		}
+		if (reg06 > rt5665->impedance_gain) {
+			reg06 = reg06 - rt5665->impedance_gain;
+		} else {
+			reg06 = 0x0;
+		}
+
+		ucontrol->value.integer.value[0] = reg05;
+		ucontrol->value.integer.value[1] = reg06;
+	}
+	 ret = snd_soc_put_volsw(kcontrol, ucontrol);
 
 	if (snd_soc_read(codec, RT5665_STO_NG2_CTRL_1) & RT5665_NG2_EN) {
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
@@ -1002,6 +1041,12 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
 			RT5665_NG2_EN_MASK, RT5665_NG2_EN);
 	}
+
+	if (rt5665->impedance_gain_map == true)
+		snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8, 0x0700,
+			rt5665->impedance_bias << 8);
+	
+	mutex_unlock(&codec->component.card->dapm_mutex);
 
 	return ret;
 }
@@ -1180,7 +1225,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 		msleep(20);
 
 		if (!(snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_12) & 0x8000)) {
-			rt5665->hp_imp_value =
+			rt5665->impedance_value =
 				snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_14);
 			break;
 		}
@@ -1208,6 +1253,17 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_dapm_disable_pin(dapm, "CLKDET SYS");
 	snd_soc_dapm_disable_pin(dapm, "CLKDET HP");
 	snd_soc_dapm_sync(dapm);
+
+	for (i = 0; i < ARRAY_SIZE(hp_gain_table); i++) {
+		if (rt5665->impedance_value < hp_gain_table[i].min
+		 || rt5665->impedance_value > hp_gain_table[i].max)
+			continue;
+
+		dev_dbg(codec->dev, "SET GAIN %d for %d Impedance value\n",
+				hp_gain_table[i].gain, rt5665->impedance_value);
+		rt5665->impedance_gain = hp_gain_table[i].gain;
+		rt5665->impedance_bias = hp_gain_table[i].bias;	
+	}
 
 	return 0;
 }
@@ -4427,34 +4483,6 @@ static int rt5665_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask,
 	return 0;
 }
 
-static int rt5665_set_bclk_ratio(struct snd_soc_dai *dai, unsigned int ratio)
-{
-	struct snd_soc_codec *codec = dai->codec;
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-
-	dev_dbg(codec->dev, "%s ratio=%d\n", __func__, ratio);
-
-	rt5665->bclk[dai->id] = ratio;
-
-	if (ratio == 64) {
-		switch (dai->id) {
-		case RT5665_AIF2_1:
-		case RT5665_AIF2_2:
-			snd_soc_update_bits(codec, RT5665_ADDA_CLK_1,
-				RT5665_I2S_BCLK_MS2_MASK,
-				RT5665_I2S_BCLK_MS2_64);
-			break;
-		case RT5665_AIF3:
-			snd_soc_update_bits(codec, RT5665_ADDA_CLK_1,
-				RT5665_I2S_BCLK_MS3_MASK,
-				RT5665_I2S_BCLK_MS3_64);
-			break;
-		}
-	}
-
-	return 0;
-}
-
 static int rt5665_set_bias_level(struct snd_soc_codec *codec,
 			enum snd_soc_bias_level level)
 {
@@ -4717,8 +4745,6 @@ static int rt5665_suspend(struct snd_soc_codec *codec)
 
 static int rt5665_resume(struct snd_soc_codec *codec)
 {
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
-
 	return 0;
 }
 #else
@@ -4736,7 +4762,6 @@ static const struct snd_soc_dai_ops rt5665_aif_dai_ops = {
 	.set_sysclk = rt5665_set_dai_sysclk,
 	.set_tdm_slot = rt5665_set_tdm_slot,
 	.set_pll = rt5665_set_dai_pll,
-//	.set_bclk_ratio = rt5665_set_bclk_ratio,
 };
 
 static struct snd_soc_dai_driver rt5665_dai[] = {
@@ -4866,6 +4891,10 @@ MODULE_DEVICE_TABLE(i2c, rt5665_i2c_id);
 
 static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 {
+	int len = ARRAY_SIZE(hp_gain_table);
+	u32 data[len * 4];
+	int i;
+
 	rt5665->pdata.in1_diff = of_property_read_bool(dev->of_node,
 					"realtek,in1-differential");
 	rt5665->pdata.in2_diff = of_property_read_bool(dev->of_node,
@@ -4904,6 +4933,26 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth3",
 		&rt5665->pdata.sar_pb_vth3);
 
+	if (!of_property_read_u32_array(dev->of_node, "imp_table", data, (len * 4))) {
+		pr_info("%s: data from DT\n", __func__);
+
+		for (i = 0; i < len; i++) {
+			hp_gain_table[i].min = data[i * 4];
+			hp_gain_table[i].max = data[(i * 4) + 1];
+			hp_gain_table[i].gain = data[(i * 4) + 2];
+			hp_gain_table[i].bias = data[(i * 4) + 3];
+			pr_info("%s: min=%d,max=%d ==> gain=%d\n", __func__,
+				hp_gain_table[i].min, hp_gain_table[i].max,
+				hp_gain_table[i].gain);
+		}
+
+		rt5665->impedance_gain_map = true;
+		rt5665->impedance_value = 0x3ff;
+		rt5665->impedance_gain = 0;
+		rt5665->impedance_bias = 5;
+	} else {
+		rt5665->impedance_gain_map = false;
+	}
 	return 0;
 }
 

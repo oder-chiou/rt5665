@@ -2005,11 +2005,15 @@ struct rt5665_priv {
 	int jack_type;
 	int irq;
 	int irq_work_delay_time;
-	int hp_imp_value;
 
 	unsigned int adb_reg_addr[0x100];
 	unsigned int adb_reg_value[0x100];
 	unsigned short adb_reg_num;
+
+	bool impedance_gain_map;
+	unsigned int impedance_value;
+	unsigned int impedance_gain;
+	unsigned int impedance_bias;
 };
 
 int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
