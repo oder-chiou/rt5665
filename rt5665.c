@@ -53,11 +53,11 @@ static struct {
 	unsigned int gain; /* Register value to set for this measurement */
 	unsigned int bias;
 } hp_gain_table[] = {
-	{   0,   10,   9,  5 },
-	{   11,  21,   5,  5 },
-	{   22,  85,   1,  5 },
-	{   86,  839,  0,  1 },
-	{   840, 1023, 0,  1 },
+	{	0x00, 0x1f,		0,  	5 },	// 8 ohm
+	{	0x20, 0x2d,		0,  	5 },	// 16 ohm
+	{	0x2e, 0x3d,		0,  	5 },	// 32 ohm
+	{	0x3e, 0x69,		0,  	1 },	// 64 ohm
+	{	0x6a, 0x7fff,		0,  	1 },	// > 100 ohm
 };
 
 static const struct reg_default rt5665_reg[] = {
@@ -1010,7 +1010,7 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	int reg05, reg06;
 	int ret;
-	
+
 	mutex_lock(&codec->component.card->dapm_mutex);
 
 	if (rt5665->impedance_gain_map == true) {
@@ -1045,7 +1045,7 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 	if (rt5665->impedance_gain_map == true)
 		snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8, 0x0700,
 			rt5665->impedance_bias << 8);
-	
+
 	mutex_unlock(&codec->component.card->dapm_mutex);
 
 	return ret;
@@ -1168,7 +1168,7 @@ static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
 {
 	if (enable) {
 		snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET,
-			0x8000, 0x8000);
+			0x8700, 0x8500);
 		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL1,
 			0x8000, 0x8000);
 		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL5,
@@ -1259,10 +1259,10 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 		 || rt5665->impedance_value > hp_gain_table[i].max)
 			continue;
 
-		dev_dbg(codec->dev, "SET GAIN %d for %d Impedance value\n",
-				hp_gain_table[i].gain, rt5665->impedance_value);
+		dev_dbg(codec->dev, "[%d] SET GAIN %d for 0x%x Impedance value\n",
+				i, hp_gain_table[i].gain, rt5665->impedance_value);
 		rt5665->impedance_gain = hp_gain_table[i].gain;
-		rt5665->impedance_bias = hp_gain_table[i].bias;	
+		rt5665->impedance_bias = hp_gain_table[i].bias;
 	}
 
 	return 0;
