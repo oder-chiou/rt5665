@@ -57,7 +57,7 @@ static struct {
 	{	0x20, 0x2d,		0,  	5 },	// 16 ohm
 	{	0x2e, 0x3d,		0,  	5 },	// 32 ohm
 	{	0x3e, 0x69,		0,  	1 },	// 64 ohm
-	{	0x6a, 0x7fff,		0,  	1 },	// > 100 ohm
+	{	0x6a, 0xffff,		0,  	1 },	// > 100 ohm
 };
 
 static const struct reg_default rt5665_reg[] = {
