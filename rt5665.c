@@ -1542,11 +1542,13 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 			SND_JACK_BTN_0 | SND_JACK_BTN_1 |
 			SND_JACK_BTN_2 | SND_JACK_BTN_3);
 
-	if (rt5665->jack_type & (SND_JACK_BTN_0 | SND_JACK_BTN_1 |
-		SND_JACK_BTN_2 | SND_JACK_BTN_3))
-		schedule_delayed_work(&rt5665->jd_check_work, 0);
-	else
-		cancel_delayed_work_sync(&rt5665->jd_check_work);
+	if (rt5665->pdata.jd_src == RT5665_JD1) {
+		if (rt5665->jack_type & (SND_JACK_BTN_0 | SND_JACK_BTN_1 |
+			SND_JACK_BTN_2 | SND_JACK_BTN_3))
+			schedule_delayed_work(&rt5665->jd_check_work, 0);
+		else
+			cancel_delayed_work_sync(&rt5665->jd_check_work);
+	}
 }
 
 static const char *rt5665_jack_type_mode[] = {
