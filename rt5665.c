@@ -455,6 +455,10 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_BIAS_CUR_CTRL_8, 	0xa602},
 	{RT5665_TDM_CTRL_6, 		0x0101},
 	{RT5665_ASRC_8, 		0x0120},
+	{RT5665_TEST_MODE_CTRL_2, 	0x0015},
+	{RT5665_EJD_CTRL_1, 		0x6040},
+	{RT5665_EJD_CTRL_4, 		0x0000},
+	{RT5665_EJD_CTRL_5, 		0xa70a},
 };
 
 
@@ -1017,7 +1021,7 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 		reg05 = ucontrol->value.integer.value[0];
 		reg06 = ucontrol->value.integer.value[1];
 
-		dev_dbg(codec->dev, "%s  %d Impedance value\n",__func__,
+		dev_dbg(codec->dev, "%s %d Impedance value\n", __func__,
 			rt5665->impedance_value);
 		if (reg05 > rt5665->impedance_gain) {
 			reg05 = reg05 - rt5665->impedance_gain;
@@ -1033,7 +1037,8 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 		ucontrol->value.integer.value[0] = reg05;
 		ucontrol->value.integer.value[1] = reg06;
 	}
-	 ret = snd_soc_put_volsw(kcontrol, ucontrol);
+
+	ret = snd_soc_put_volsw(kcontrol, ucontrol);
 
 	if (snd_soc_read(codec, RT5665_STO_NG2_CTRL_1) & RT5665_NG2_EN) {
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
@@ -1209,7 +1214,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_STO2_ADC_MIXER, 0x6c6c); //
 	snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
 		RT5665_L_MUTE | RT5665_R_MUTE, 0); //
-	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x300, 0x300);
+	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0x200);
 	snd_soc_update_bits(codec, RT5665_ADDA_CLK_1, RT5665_I2S_PD1_MASK,
 		RT5665_I2S_PD1_2); //
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0x3320);
@@ -1240,7 +1245,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0000);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_1, 0x0000);
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0xb320);
-	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x300, 0);
+	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0);
 	snd_soc_write(codec, RT5665_STO1_ADC_DIG_VOL, reg1c);
 
 	mutex_unlock(&codec->component.card->dapm_mutex);
@@ -1318,28 +1323,34 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	unsigned int sar_hs_type;
+	unsigned int sar_hs_type, val;
 
 	if (jack_insert) {
 		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
 		snd_soc_dapm_sync(dapm);
 
-		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_4, 0);
-		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-			RT5665_JD_MODE | 0x180, RT5665_JD_MODE | 0x080);
-		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_5, 0x700,
-			0x600);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100,
 			0x100);
+
+		regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
+		if (val & 0x4) {
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+				0x100, 0);
+
+			regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
+			while (val & 0x4) {
+				msleep(10);
+				regmap_read(rt5665->regmap, RT5665_GPIO_STA,
+					&val);
+			}
+		}
+
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+			0x180, 0x180);
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
-		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
 		rt5665_imp_detect(codec);
-
-		msleep(400);
-		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-			0x100, 0x100);
-		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
