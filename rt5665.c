@@ -2908,6 +2908,8 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0003);
 		snd_soc_update_bits(codec, RT5665_HP_CTRL_2, RT5665_VOL_L_MUTE,
 			RT5665_VOL_L_MUTE);
+		snd_soc_update_bits(codec, RT5665_CHARGE_PUMP_1,
+			0x730, 0x730);
 		rt5665_noise_gate(codec, true);
 		break;
 
@@ -5281,7 +5283,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	/* Enhance performance*/
 	regmap_update_bits(rt5665->regmap, RT5665_PWR_ANLG_1,
 		RT5665_HP_DRIVER_MASK | RT5665_LDO1_DVO_MASK,
-		RT5665_HP_DRIVER_5X | RT5665_LDO1_DVO_09);
+		RT5665_HP_DRIVER_5X | RT5665_LDO1_DVO_12);
 
 	INIT_DELAYED_WORK(&rt5665->jack_detect_work, rt5665_jack_detect_handler);
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
