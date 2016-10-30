@@ -5,9 +5,9 @@ audio_codec: rt5665@1b {
 			realtek,in3-differential;
 			realtek,in4-differential;
 			realtek,jd-src = <2>;
-			realtek,sar-hs-type = <729>;
+			realtek,sar-hs-type = <614>;
 			realtek,sar-pb-vth0 = <102>;
-			realtek,sar-pb-vth1 = <146>;
-			realtek,sar-pb-vth2 = <257>;
-			realtek,sar-pb-vth3 = <495>;
+			realtek,sar-pb-vth1 = <142>;
+			realtek,sar-pb-vth2 = <236>;
+			realtek,sar-pb-vth3 = <480>;
 		};
