@@ -3564,6 +3564,7 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"DAC Stereo2 Filter", NULL, "DAC STO2 ASRC", is_using_asrc},
 
 	/*Vref*/
+	{"Mic Det Power", NULL, "Vref1"},
 	{"Mic Det Power", NULL, "Vref2"},
 	{"MICBIAS1", NULL, "Vref1"},
 	{"MICBIAS1", NULL, "Vref2"},
@@ -3614,6 +3615,7 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"BST1 CBJ", NULL, "IN1P"},
 	{"BST1 CBJ", NULL, "IN1N"},
 	{"BST1 CBJ", NULL, "CBJ Power"},
+	{"CBJ Power", NULL, "Vref1"},
 	{"CBJ Power", NULL, "Vref2"},
 
 	{"INL VOL", NULL, "IN3P"},
@@ -4134,6 +4136,7 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"Mono MIX", "DAC L2 Switch", "DAC L2"},
 	{"Mono MIX", "MONOVOL Switch", "MONOVOL"},
 	{"Mono Amp", NULL, "Mono MIX"},
+	{"Mono Amp", NULL, "Vref1"},
 	{"Mono Amp", NULL, "Vref2"},
 	{"Mono Amp", NULL, "CLKDET SYS"},
 	{"Mono Amp", NULL, "CLKDET MONO"},
@@ -4146,7 +4149,6 @@ static const struct snd_soc_dapm_route rt5665_dapm_routes[] = {
 	{"HP Amp", NULL, "CLKDET SYS"},
 	{"HP Amp", NULL, "CLKDET HP"},
 	{"HP Amp", NULL, "CBJ Power"},
-	{"HP Amp", NULL, "Vref2"},
 	{"HPO Playback", "Switch", "HP Amp"},
 	{"HPOL", NULL, "HPO Playback"},
 	{"HPOR", NULL, "HPO Playback"},
