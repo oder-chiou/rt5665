@@ -47,6 +47,11 @@
     <ctl name="DAC1 MIXL DAC1 Switch" value="1"/>
     <ctl name="DAC1 MIXR DAC1 Switch" value="1"/>
 
+    <ctl name="DAC1 MIXL Stereo ADC Switch" value="0"/>
+    <ctl name="DAC1 MIXR Stereo ADC Switch" value="0"/>
+
+    <ctl name="TDM1 Data Mux" value="1234"/>
+
     <ctl name="DAC L2 Mux" value="IF1 DAC2"/>
 
     <ctl name="Stereo1 ADC L Mux" value="ADC1 L"/>
@@ -115,6 +120,31 @@
         <ctl name="RECMIX1R BST4 Switch" value="1"/>
         <ctl name="Main Mic Switch" value="1" />
         <ctl name="Sub Mic Switch" value="1" />
+    </path>
+
+    <!-- TX & RX karaoke part -->
+    <path name="ear-mic-karaoke">
+        <ctl name="DAC1 MIXL Stereo ADC Switch" value="1"/>
+        <ctl name="DAC1 MIXR Stereo ADC Switch" value="1"/>
+        <ctl name="Stereo1 DAC MIXL DAC L1 Switch" value="1"/>
+        <ctl name="Stereo1 DAC MIXR DAC R1 Switch" value="1"/>
+        <ctl name="Stereo2 DAC MIXL DAC L1 Switch" value="1"/>
+        <ctl name="Stereo2 DAC MIXR DAC R1 Switch" value="1"/>
+        <ctl name="Stereo2 DD L Mux" value="STO2 DAC"/>
+        <ctl name="Stereo2 DD R Mux" value="STO2 DAC"/>
+        <ctl name="Stereo2 ADC L1 Mux" value="DD Mux"/>
+        <ctl name="Stereo2 ADC R1 Mux" value="DD Mux"/>
+        <ctl name="Stereo2 ADC MIXL ADC1 Switch" value="1"/>
+        <ctl name="Stereo2 ADC MIXR ADC1 Switch" value="1"/>
+        <ctl name="IF1_1_ADC2 Mux" value="STO2 ADC"/>
+        <ctl name="TDM1 Data Mux" value="2134"/>
+        <ctl name="DAC1 MIXL Stereo ADC Switch" value="1"/>
+        <ctl name="DAC1 MIXR Stereo ADC Switch" value="1"/>
+        <ctl name="HPO Playback Switch" value="1"/>
+        <ctl name="HP Switch" value="1"/>
+        <ctl name="RECMIX1L BST1 Switch" value="1"/>
+        <ctl name="RECMIX1R BST1 Switch" value="1"/>
+        <ctl name="Headset Mic Switch" value="1"/>
     </path>
     <!-- end of Device -->
 
