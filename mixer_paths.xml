@@ -145,6 +145,8 @@
         <ctl name="RECMIX1L BST1 Switch" value="1"/>
         <ctl name="RECMIX1R BST1 Switch" value="1"/>
         <ctl name="Headset Mic Switch" value="1"/>
+        <ctl name="STO1 ADC Capture Volume" value="39"/>
+        <ctl name="DAC1 Playback Volume" value="159"/>
     </path>
     <!-- end of Device -->
 
