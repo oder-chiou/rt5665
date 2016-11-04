@@ -891,6 +891,7 @@ static bool rt5665_readable_register(struct device *dev, unsigned int reg)
 	case RT5665_R_EQ_POST_VOL:
 	case RT5665_SCAN_MODE_CTRL:
 	case RT5665_I2C_MODE:
+	case RT5665_MAGIC:
 		return true;
 	default:
 		return false;
@@ -1350,7 +1351,10 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
-		rt5665_imp_detect(codec);
+		if (rt5665->magic)
+			rt5665_imp_detect(codec);
+		else
+			msleep(100);
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
@@ -4985,7 +4989,7 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 		}
 
 		rt5665->impedance_gain_map = true;
-		rt5665->impedance_value = 0x3ff;
+		rt5665->impedance_value = 0;
 		rt5665->impedance_gain = 0;
 		rt5665->impedance_bias = 5;
 	} else {
@@ -5006,7 +5010,10 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 
 	regmap_write(rt5665->regmap, RT5665_RESET, 0);
 	regmap_write(rt5665->regmap, RT5665_BIAS_CUR_CTRL_8, 0xa602);
-	regmap_write(rt5665->regmap, RT5665_HP_CHARGE_PUMP_1, 0x0c26);
+	if (rt5665->magic)
+		regmap_write(rt5665->regmap, RT5665_HP_CHARGE_PUMP_1, 0x0c26);
+	else
+		regmap_write(rt5665->regmap, RT5665_HP_CHARGE_PUMP_1, 0x0e26);
 	regmap_write(rt5665->regmap, RT5665_MONOMIX_IN_GAIN, 0x021f);
 	regmap_write(rt5665->regmap, RT5665_MONO_OUT, 0x480a);
 	regmap_write(rt5665->regmap, RT5665_PWR_MIXER, 0x083f);
@@ -5200,6 +5207,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 		return -ENODEV;
 	}
 
+	regmap_read(rt5665->regmap, RT5665_MAGIC, &rt5665->magic);
 	regmap_read(rt5665->regmap, RT5665_RESET, &val);
 	switch(val) {
 	case 0x0:
@@ -5306,6 +5314,9 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 	regmap_update_bits(rt5665->regmap, RT5665_BIAS_CUR_CTRL_2,
 		0x0007, 0x0003);
+
+	if (!rt5665->magic)
+		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x00f0, 0);
 
 	INIT_DELAYED_WORK(&rt5665->jack_detect_work, rt5665_jack_detect_handler);
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);

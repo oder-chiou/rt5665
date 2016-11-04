@@ -425,6 +425,7 @@
 #define RT5665_R_EQ_PRE_VOL			0x03f1
 #define RT5665_L_EQ_POST_VOL			0x03f2
 #define RT5665_R_EQ_POST_VOL			0x03f3
+#define RT5665_MAGIC				0x03ff
 #define RT5665_SCAN_MODE_CTRL			0x07f0
 #define RT5665_I2C_MODE				0x07fa
 
@@ -2009,6 +2010,7 @@ struct rt5665_priv {
 	unsigned int adb_reg_addr[0x100];
 	unsigned int adb_reg_value[0x100];
 	unsigned short adb_reg_num;
+	unsigned int magic;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;
