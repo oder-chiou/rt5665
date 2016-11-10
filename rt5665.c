@@ -1377,6 +1377,8 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			snd_soc_dapm_sync(dapm);
 			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
 				0xc000, 0xc000);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+				0x80, 0);
 		}
 	} else {
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
@@ -3043,7 +3045,7 @@ static int rt5665_micbias2_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		snd_soc_update_bits(codec,  RT5665_EJD_CTRL_1, 0x80, 0);
+		snd_soc_update_bits(codec, RT5665_EJD_CTRL_1, 0x80, 0);
 		break;
 
 	default:
