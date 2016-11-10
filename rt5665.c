@@ -1327,6 +1327,8 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	unsigned int sar_hs_type, val;
 
 	if (jack_insert) {
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
+			0);
 		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
 		snd_soc_dapm_sync(dapm);
 
@@ -1373,6 +1375,8 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 				0x100, 0);
 			snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
 			snd_soc_dapm_sync(dapm);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
+				0xc000, 0xc000);
 		}
 	} else {
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
