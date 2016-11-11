@@ -1398,6 +1398,7 @@ static irqreturn_t rt5665_irq(int irq, void *data)
 {
 	struct rt5665_priv *rt5665 = data;
 
+	wake_lock_timeout(&rt5665->jack_detect_wake_lock, 3 * HZ);
 	cancel_delayed_work_sync(&rt5665->jack_detect_work);
 	queue_delayed_work(system_wq, &rt5665->jack_detect_work,
 		msecs_to_jiffies(rt5665->irq_work_delay_time));
@@ -5332,6 +5333,9 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	switch_dev_register(&rt5665_headset_switch);
 #endif
 
+	wake_lock_init(&rt5665->jack_detect_wake_lock, WAKE_LOCK_SUSPEND,
+		"jack detect");
+
 	if (i2c->irq)
 		rt5665->irq = i2c->irq;
 
@@ -5345,6 +5349,8 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 static int rt5665_i2c_remove(struct i2c_client *i2c)
 {
+	struct rt5665_priv *rt5665 = i2c_get_clientdata(i2c);
+
 	snd_soc_unregister_codec(&i2c->dev);
 
 	misc_deregister(&rt5665_mic_adc_dev);
@@ -5352,6 +5358,8 @@ static int rt5665_i2c_remove(struct i2c_client *i2c)
 #ifdef CONFIG_SWITCH
 	switch_dev_unregister(&rt5665_headset_switch);
 #endif
+
+	wake_lock_destroy(&rt5665->jack_detect_wake_lock);
 
 	return 0;
 }

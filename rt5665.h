@@ -12,6 +12,7 @@
 #ifndef __RT5665_H__
 #define __RT5665_H__
 
+#include <linux/wakelock.h>
 #include <sound/rt5665.h>
 
 #define RT5665_6_8_DEVICE_ID 0x6451
@@ -1991,6 +1992,7 @@ struct rt5665_priv {
 	struct delayed_work jack_detect_work;
 	struct delayed_work calibrate_work;
 	struct delayed_work jd_check_work;
+	struct wake_lock jack_detect_wake_lock;
 
 	int sysclk;
 	int sysclk_src;
