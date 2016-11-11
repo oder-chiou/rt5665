@@ -457,7 +457,7 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_ASRC_8, 		0x0120},
 	{RT5665_TEST_MODE_CTRL_2, 	0x0015},
 	{RT5665_EJD_CTRL_1, 		0x6040},
-	{RT5665_EJD_CTRL_4, 		0x0000},
+	{RT5665_EJD_CTRL_4, 		0xc000},
 	{RT5665_EJD_CTRL_5, 		0xa70a},
 };
 
@@ -1381,6 +1381,8 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 				0x80, 0);
 		}
 	} else {
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
+			0xc000);
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100, 0);
 		snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
