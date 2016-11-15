@@ -458,7 +458,7 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_TEST_MODE_CTRL_2, 	0x0015},
 	{RT5665_EJD_CTRL_1, 		0x6040},
 	{RT5665_EJD_CTRL_4, 		0xc000},
-	{RT5665_EJD_CTRL_5, 		0xa70a},
+	{RT5665_EJD_CTRL_5, 		0xa60a},
 };
 
 
@@ -1329,34 +1329,27 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	if (jack_insert) {
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
 			0);
-		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
-		snd_soc_dapm_sync(dapm);
-
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100,
 			0x100);
 
 		regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
 		if (val & 0x4) {
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
+				0xc000, 0x4000);
 			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-				0x100, 0);
-
-			regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
-			while (val & 0x4) {
-				msleep(10);
-				regmap_read(rt5665->regmap, RT5665_GPIO_STA,
-					&val);
-			}
+				0x180, 0);
 		}
 
-		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-			0x180, 0x180);
-		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
-		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
+		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
+		snd_soc_dapm_sync(dapm);
 
 		if (rt5665->magic)
 			rt5665_imp_detect(codec);
 		else
 			msleep(100);
+
+		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
@@ -1364,15 +1357,26 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		sar_hs_type = rt5665->pdata.sar_hs_type ?
 			rt5665->pdata.sar_hs_type : 729;
 
+		if (val & 0x4) {
+			msleep(180);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+				0x100, 0x100);
+		}
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
+			0);
+
 		if (sar_adc_value > sar_hs_type) {
 			rt5665->jack_type = SND_JACK_HEADSET;
 			rt5665_enable_push_button_irq(codec, true);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+				0x80, 0x80);
 		} else {
 			rt5665->jack_type = SND_JACK_HEADPHONE;
 			regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1,
 				0x2291);
 			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
 				0x100, 0);
+
 			snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
 			snd_soc_dapm_sync(dapm);
 			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
@@ -1392,6 +1396,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		rt5665->jack_type = 0;
 	}
 
+	dev_dbg(codec->dev, "sar_adc_value = %d\n", sar_adc_value);
 	dev_dbg(codec->dev, "jack_type = %d\n", rt5665->jack_type);
 	return rt5665->jack_type;
 }
