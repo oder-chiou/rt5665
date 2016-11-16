@@ -1358,7 +1358,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			rt5665->pdata.sar_hs_type : 729;
 
 		if (val & 0x4) {
-			msleep(180);
+			msleep(230);
 			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
 				0x100, 0x100);
 		}
