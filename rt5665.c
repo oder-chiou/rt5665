@@ -1347,13 +1347,13 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
 		snd_soc_dapm_sync(dapm);
 
+		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
+
 		if (rt5665->magic)
 			rt5665_imp_detect(codec);
 		else
 			msleep(100);
-
-		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
-		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
