@@ -1194,7 +1194,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	unsigned int reg1c, reg2a, reg1db;
-	int i;
+	int i, mask;
 
 	snd_soc_dapm_force_enable_pin(dapm, "Vref1");
 	snd_soc_dapm_force_enable_pin(dapm, "Vref2");
@@ -1226,16 +1226,24 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x3c05);
 	snd_soc_write(codec, RT5665_HP_IMP_SENS_CTRL_23, 0x0004);
 	snd_soc_write(codec, RT5665_STO1_DAC_MIXER, 0x2aaa);
-	snd_soc_write(codec, RT5665_HP_IMP_SENS_CTRL_12, 0xc335);
+	snd_soc_write(codec, RT5665_HP_IMP_SENS_CTRL_12, 0xc037);
 
-	for (i = 0; i < 30; i++) {
-		msleep(20);
+	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+		mask = 0x1010;
+	else
+		mask = 0x0010;
+
+	for (i = 0; i < 60; i++) {
+		msleep(10);
 
 		if (!(snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_12) & 0x8000)) {
 			rt5665->impedance_value =
 				snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_14);
 			break;
 		}
+
+		if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask)
+			break;
 	}
 
 	/* Recovery */
@@ -1252,6 +1260,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 
 	mutex_unlock(&codec->component.card->dapm_mutex);
 
+/*
 	snd_soc_dapm_disable_pin(dapm, "Vref1");
 	snd_soc_dapm_disable_pin(dapm, "Vref2");
 	snd_soc_dapm_disable_pin(dapm, "ADC Stereo2 Filter");
@@ -1260,6 +1269,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_dapm_disable_pin(dapm, "CLKDET SYS");
 	snd_soc_dapm_disable_pin(dapm, "CLKDET HP");
 	snd_soc_dapm_sync(dapm);
+*/
 
 	for (i = 0; i < ARRAY_SIZE(hp_gain_table); i++) {
 		if (rt5665->impedance_value < hp_gain_table[i].min
@@ -1325,9 +1335,14 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	unsigned int sar_hs_type, val;
+	unsigned int sar_hs_type, val, mask;
 
 	if (jack_insert) {
+		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+			mask = 0x1010;
+		else
+			mask = 0x0010;
+
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
 			0);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x300,
@@ -1344,22 +1359,17 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 				0x180, 0);
 		}
 
-		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
-		snd_soc_dapm_sync(dapm);
-
-		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
-		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
-
 		if (rt5665->magic)
 			rt5665_imp_detect(codec);
-		else
-			msleep(100);
 
-		sar_adc_value = snd_soc_read(rt5665->codec,
-			RT5665_SAR_IL_CMD_4) & 0x7ff;
+		if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask) {
+			regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST,
+				0x8000, 0);
+			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
+				0x200, 0);
 
-		sar_hs_type = rt5665->pdata.sar_hs_type ?
-			rt5665->pdata.sar_hs_type : 729;
+			return 0;
+		}
 
 		if (val & 0x4) {
 			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
@@ -1371,20 +1381,51 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 				msleep(10);
 				regmap_read(rt5665->regmap, RT5665_GPIO_STA,
 					&val);
+
+				if (snd_soc_read(rt5665->codec,
+					RT5665_AJD1_CTRL) & mask) {
+					regmap_update_bits(rt5665->regmap,
+						RT5665_VOL_TEST, 0x8000, 0);
+					regmap_update_bits(rt5665->regmap,
+						RT5665_MICBIAS_2, 0x200, 0);
+
+					return 0;
+				}
 			}
-			msleep(50);
 		}
 
 		regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST, 0x8000, 0);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x200, 0);
+
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1, 0x180,
+			0x180);
+
+		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
+		snd_soc_dapm_disable_pin(dapm, "Vref1");
+		snd_soc_dapm_disable_pin(dapm, "Vref2");
+		snd_soc_dapm_disable_pin(dapm, "ADC Stereo2 Filter");
+		snd_soc_dapm_disable_pin(dapm, "DAC Stereo1 Filter");
+		snd_soc_dapm_disable_pin(dapm, "DAC 1 Clock");
+		snd_soc_dapm_disable_pin(dapm, "CLKDET SYS");
+		snd_soc_dapm_disable_pin(dapm, "CLKDET HP");
+		snd_soc_dapm_sync(dapm);
+
+		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
+
+		msleep(100);
+
+		sar_adc_value = snd_soc_read(rt5665->codec,
+			RT5665_SAR_IL_CMD_4) & 0x7ff;
+
+		sar_hs_type = rt5665->pdata.sar_hs_type ?
+			rt5665->pdata.sar_hs_type : 729;
 
 		dev_dbg(codec->dev, "sar_adc_value = %d\n", sar_adc_value);
 
 		if (sar_adc_value > sar_hs_type) {
 			rt5665->jack_type = SND_JACK_HEADSET;
 			rt5665_enable_push_button_irq(codec, true);
-			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
-				0x180, 0x180);
 		} else {
 			rt5665->jack_type = SND_JACK_HEADPHONE;
 			regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1,
