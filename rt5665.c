@@ -2984,6 +2984,13 @@ static int rt5665_mono_event(struct snd_soc_dapm_widget *w,
 
 static void rt5665_recalibrate(struct snd_soc_codec *codec)
 {
+	static bool recalibrated = false;
+
+	if (recalibrated == false)
+		recalibrated = true;
+	else
+		snd_soc_update_bits(codec, RT5665_HP_CALIB_CTRL_1, 0x1800, 0);
+	
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x3005);
 	snd_soc_write(codec, RT5665_HP_CALIB_CTRL_2, 0x0321);
 	snd_soc_update_bits(codec, RT5665_DIG_MISC, 0x4000, 0x4000);
