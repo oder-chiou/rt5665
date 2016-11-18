@@ -12,6 +12,7 @@
 #ifndef __RT5665_H__
 #define __RT5665_H__
 
+#include <linux/wakelock.h>
 #include <sound/rt5665.h>
 
 #define RT5665_6_8_DEVICE_ID 0x6451
@@ -425,6 +426,7 @@
 #define RT5665_R_EQ_PRE_VOL			0x03f1
 #define RT5665_L_EQ_POST_VOL			0x03f2
 #define RT5665_R_EQ_POST_VOL			0x03f3
+#define RT5665_MAGIC				0x03ff
 #define RT5665_SCAN_MODE_CTRL			0x07f0
 #define RT5665_I2C_MODE				0x07fa
 
@@ -1106,7 +1108,7 @@
 #define RT5665_HP_DRIVER_MASK			(0x3 << 2)
 #define RT5665_HP_DRIVER_1X			(0x0 << 2)
 #define RT5665_HP_DRIVER_3X			(0x1 << 2)
-#define RT5665_HP_DRIVER_5X			(0x2 << 2)
+#define RT5665_HP_DRIVER_5X			(0x3 << 2)
 #define RT5665_LDO1_DVO_MASK			(0x3)
 #define RT5665_LDO1_DVO_09			(0x0)
 #define RT5665_LDO1_DVO_10			(0x1)
@@ -1990,6 +1992,7 @@ struct rt5665_priv {
 	struct delayed_work jack_detect_work;
 	struct delayed_work calibrate_work;
 	struct delayed_work jd_check_work;
+	struct wake_lock jack_detect_wake_lock;
 
 	int sysclk;
 	int sysclk_src;
@@ -2009,6 +2012,7 @@ struct rt5665_priv {
 	unsigned int adb_reg_addr[0x100];
 	unsigned int adb_reg_value[0x100];
 	unsigned short adb_reg_num;
+	unsigned int magic;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;
