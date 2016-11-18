@@ -2982,6 +2982,24 @@ static int rt5665_mono_event(struct snd_soc_dapm_widget *w,
 
 }
 
+static void rt5665_recalibrate(struct snd_soc_codec *codec)
+{
+	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x3005);
+	snd_soc_write(codec, RT5665_HP_CALIB_CTRL_2, 0x0321);
+	snd_soc_update_bits(codec, RT5665_DIG_MISC, 0x4000, 0x4000);
+	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0000);
+	snd_soc_update_bits(codec, RT5665_DIG_MISC, 0x8000, 0x8000);
+	snd_soc_update_bits(codec, RT5665_DIG_MISC, 0x8000, 0);
+
+	while (snd_soc_read(codec, RT5665_HP_CALIB_STA_1) & 0x8000)
+		msleep(10);
+
+	snd_soc_update_bits(codec, RT5665_DIG_MISC, 0x4000, 0);
+	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0002);
+	snd_soc_write(codec, RT5665_HP_CALIB_CTRL_2, 0x0320);
+	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x2005);
+}
+
 static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
@@ -3006,6 +3024,7 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
 			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
 		rt5665_noise_gate(codec, false);
+		rt5665_recalibrate(codec);
 		break;
 
 	default:
