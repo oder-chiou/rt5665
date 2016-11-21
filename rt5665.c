@@ -1336,7 +1336,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	unsigned int sar_hs_type, val, mask;
+	unsigned int sar_hs_type, val, mask, i;
 
 	if (jack_insert) {
 		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
@@ -1414,7 +1414,13 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
 
-		msleep(100);
+		for (i = 0; i < 10; i++) {
+			msleep(10);
+
+			if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) &
+				mask)
+				return 0;
+		}
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
