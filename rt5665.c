@@ -1566,6 +1566,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 			else
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
+			rt5665->irq_work_delay_time = 0;
 		} else {
 			sar_adc_value = snd_soc_read(rt5665->codec,
 				RT5665_SAR_IL_CMD_4) & 0x7ff;
@@ -1613,6 +1614,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 		switch_set_state(&rt5665_headset_switch, 0);
 #endif
+		rt5665->irq_work_delay_time = 50;
 	}
 
 	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
