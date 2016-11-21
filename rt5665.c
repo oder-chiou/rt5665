@@ -1219,6 +1219,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 //	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0x200);
 	snd_soc_update_bits(codec, RT5665_ADDA_CLK_1, RT5665_I2S_PD1_MASK,
 		RT5665_I2S_PD1_2); //
+	snd_soc_write(codec, RT5665_BIAS_CUR_CTRL_8, 0xa602);
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0x3320);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_1, 0x2400);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0101);
