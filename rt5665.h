@@ -2013,6 +2013,7 @@ struct rt5665_priv {
 	unsigned int adb_reg_value[0x100];
 	unsigned short adb_reg_num;
 	unsigned int magic;
+	bool do_rek;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;
