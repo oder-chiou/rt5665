@@ -5073,7 +5073,7 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 		rt5665->impedance_gain_map = true;
 		rt5665->impedance_value = 0;
 		rt5665->impedance_gain = 0;
-		rt5665->impedance_bias = 5;
+		rt5665->impedance_bias = 6;
 	} else {
 		rt5665->impedance_gain_map = false;
 	}
