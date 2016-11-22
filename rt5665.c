@@ -53,11 +53,11 @@ static struct {
 	unsigned int gain; /* Register value to set for this measurement */
 	unsigned int bias;
 } hp_gain_table[] = {
-	{	0x00, 0x1f,		0,  	5 },	// 8 ohm
-	{	0x20, 0x2d,		0,  	5 },	// 16 ohm
-	{	0x2e, 0x3d,		0,  	5 },	// 32 ohm
-	{	0x3e, 0x69,		0,  	1 },	// 64 ohm
-	{	0x6a, 0xffff,		0,  	1 },	// > 100 ohm
+	{0x0000, 0x001f, 0, 6}, // 8 ohm
+	{0x0020, 0x002d, 0, 6}, // 16 ohm
+	{0x002e, 0x003d, 0, 6}, // 32 ohm
+	{0x003e, 0x0069, 0, 1}, // 64 ohm
+	{0x006a, 0xffff, 0, 1}, // > 100 ohm
 };
 
 static const struct reg_default rt5665_reg[] = {
