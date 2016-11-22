@@ -1249,6 +1249,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	reg2a = snd_soc_read(codec, RT5665_STO1_DAC_MIXER);
 	reg1db = snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2);
 
+	snd_soc_write(codec, RT5665_HPL_GAIN, 0);
 	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
 		RT5665_L_MUTE | RT5665_R_MUTE, RT5665_L_MUTE | RT5665_R_MUTE);
 	snd_soc_write(codec, RT5665_STO2_ADC_MIXER, 0x6c6c); //
