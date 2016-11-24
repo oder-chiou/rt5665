@@ -1075,10 +1075,6 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 			RT5665_NG2_EN_MASK, RT5665_NG2_EN);
 	}
 
-	if (rt5665->impedance_gain_map == true)
-		snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8, 0x0700,
-			rt5665->impedance_bias << 8);
-
 	mutex_unlock(&codec->component.card->dapm_mutex);
 
 	return ret;
@@ -3020,6 +3016,10 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (rt5665->do_rek) {
+			if (rt5665->impedance_gain_map == true)
+				snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8,
+					0x0700, rt5665->impedance_bias << 8);
+
 			rt5665_recalibrate(codec);
 			rt5665->do_rek = false;
 		}
