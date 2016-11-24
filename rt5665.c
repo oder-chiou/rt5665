@@ -1010,7 +1010,6 @@ static const struct snd_kcontrol_new rt5665_if3_adc_swap_mux =
 
 static void rt5665_recalibrate(struct snd_soc_codec *codec)
 {
-	static bool recalibrated = false;
 	unsigned int reg13a, reg1db;
 
 	reg13a = snd_soc_read(codec, RT5665_CHOP_DAC);
