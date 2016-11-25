@@ -3164,6 +3164,21 @@ static int rt5665_micbias2_event(struct snd_soc_dapm_widget *w,
 
 }
 
+static int rt5665_adc_depop_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		msleep(50);
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
 static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("LDO2", RT5665_PWR_ANLG_3, RT5665_PWR_LDO2_BIT, 0,
 		NULL, 0),
@@ -3381,28 +3396,34 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 		RT5665_PWR_ADC_S1F_BIT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("ADC Stereo2 Filter", RT5665_PWR_DIG_2,
 		RT5665_PWR_ADC_S2F_BIT, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("Stereo1 ADC MIXL", RT5665_STO1_ADC_DIG_VOL,
+	SND_SOC_DAPM_MIXER_E("Stereo1 ADC MIXL", RT5665_STO1_ADC_DIG_VOL,
 		RT5665_L_MUTE_SFT, 1, rt5665_sto1_adc_l_mix,
-		ARRAY_SIZE(rt5665_sto1_adc_l_mix)),
-	SND_SOC_DAPM_MIXER("Stereo1 ADC MIXR", RT5665_STO1_ADC_DIG_VOL,
+		ARRAY_SIZE(rt5665_sto1_adc_l_mix), rt5665_adc_depop_event,
+		SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_MIXER_E("Stereo1 ADC MIXR", RT5665_STO1_ADC_DIG_VOL,
 		RT5665_R_MUTE_SFT, 1, rt5665_sto1_adc_r_mix,
-		ARRAY_SIZE(rt5665_sto1_adc_r_mix)),
-	SND_SOC_DAPM_MIXER("Stereo2 ADC MIXL", RT5665_STO2_ADC_DIG_VOL,
+		ARRAY_SIZE(rt5665_sto1_adc_r_mix), rt5665_adc_depop_event,
+		SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_MIXER_E("Stereo2 ADC MIXL", RT5665_STO2_ADC_DIG_VOL,
 		RT5665_L_MUTE_SFT, 1, rt5665_sto2_adc_l_mix,
-		ARRAY_SIZE(rt5665_sto2_adc_l_mix)),
-	SND_SOC_DAPM_MIXER("Stereo2 ADC MIXR", RT5665_STO2_ADC_DIG_VOL,
+		ARRAY_SIZE(rt5665_sto2_adc_l_mix), rt5665_adc_depop_event,
+		SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_MIXER_E("Stereo2 ADC MIXR", RT5665_STO2_ADC_DIG_VOL,
 		RT5665_R_MUTE_SFT, 1, rt5665_sto2_adc_r_mix,
-		ARRAY_SIZE(rt5665_sto2_adc_r_mix)),
+		ARRAY_SIZE(rt5665_sto2_adc_r_mix), rt5665_adc_depop_event,
+		SND_SOC_DAPM_PRE_PMU),
 	SND_SOC_DAPM_SUPPLY("ADC Mono Left Filter", RT5665_PWR_DIG_2,
 		RT5665_PWR_ADC_MF_L_BIT, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("Mono ADC MIXL", RT5665_MONO_ADC_DIG_VOL,
+	SND_SOC_DAPM_MIXER_E("Mono ADC MIXL", RT5665_MONO_ADC_DIG_VOL,
 		RT5665_L_MUTE_SFT, 1, rt5665_mono_adc_l_mix,
-		ARRAY_SIZE(rt5665_mono_adc_l_mix)),
+		ARRAY_SIZE(rt5665_mono_adc_l_mix), rt5665_adc_depop_event,
+		SND_SOC_DAPM_PRE_PMU),
 	SND_SOC_DAPM_SUPPLY("ADC Mono Right Filter", RT5665_PWR_DIG_2,
 		RT5665_PWR_ADC_MF_R_BIT, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER("Mono ADC MIXR", RT5665_MONO_ADC_DIG_VOL,
+	SND_SOC_DAPM_MIXER_E("Mono ADC MIXR", RT5665_MONO_ADC_DIG_VOL,
 		RT5665_R_MUTE_SFT, 1, rt5665_mono_adc_r_mix,
-		ARRAY_SIZE(rt5665_mono_adc_r_mix)),
+		ARRAY_SIZE(rt5665_mono_adc_r_mix), rt5665_adc_depop_event,
+		SND_SOC_DAPM_PRE_PMU),
 
 	/* ADC PGA */
 	SND_SOC_DAPM_PGA("Stereo1 ADC MIX", SND_SOC_NOPM, 0, 0, NULL, 0),
