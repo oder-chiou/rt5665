@@ -1876,6 +1876,44 @@ static int rt5665_clk_sel_put(struct snd_kcontrol *kcontrol,
 	return snd_soc_put_enum_double(kcontrol, ucontrol);
 }
 
+static int rt5665_disable_ng2_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = rt5665->disable_ng2;
+	
+	return 0;
+}
+
+static int rt5665_disable_ng2_put(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct snd_soc_codec *codec = snd_soc_component_to_codec(component);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	rt5665->disable_ng2 = !!ucontrol->value.integer.value[0];
+	if (rt5665->disable_ng2) {
+		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
+			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
+		snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
+			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
+	} else {
+		if (snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2) == 0x0003)
+			snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
+				RT5665_NG2_EN_MASK, RT5665_NG2_EN);
+
+		if (snd_soc_read(codec, RT5665_MONO_OUT) & 0x30)
+			snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
+				RT5665_NG2_EN_MASK, RT5665_NG2_EN);
+	}
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new rt5665_snd_controls[] = {
 	/* Headphone Output Volume */
 	SOC_DOUBLE_R_EXT_TLV("Headphone Playback Volume", RT5665_HPL_GAIN,
@@ -1958,6 +1996,8 @@ static const struct snd_kcontrol_new rt5665_snd_controls[] = {
 		snd_soc_get_enum_double, rt5665_clk_sel_put),
 	SOC_ENUM_EXT("AD MONOR Clk Sel", rt5665_ad_monor_asrc_enum,
 		snd_soc_get_enum_double, rt5665_clk_sel_put),
+	SOC_SINGLE_EXT("Disable NG2", SND_SOC_NOPM, 0, 1, 0,
+		rt5665_disable_ng2_get, rt5665_disable_ng2_put),
 
 	/* for test only */
 	SOC_ENUM_EXT("jack type", rt5665_jack_type_enum,
@@ -2977,11 +3017,14 @@ static int rt5665_mono_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
-			RT5665_NG2_EN_MASK, RT5665_NG2_EN);
+		if (!rt5665->disable_ng2)
+			snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
+				RT5665_NG2_EN_MASK, RT5665_NG2_EN);
+
 		snd_soc_update_bits(codec, RT5665_MONO_AMP_CALIB_CTRL_1, 0x40,
 			0x0);
 		snd_soc_update_bits(codec, RT5665_MONO_OUT, 0x10, 0x10);
@@ -3022,8 +3065,10 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 			rt5665->do_rek = false;
 		}
 
-		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
-			RT5665_NG2_EN_MASK, RT5665_NG2_EN);
+		if (!rt5665->disable_ng2)
+			snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
+				RT5665_NG2_EN_MASK, RT5665_NG2_EN);
+
 		snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0003);
 		snd_soc_update_bits(codec, RT5665_HP_CTRL_2, RT5665_VOL_L_MUTE,
 			RT5665_VOL_L_MUTE);
