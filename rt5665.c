@@ -1903,10 +1903,13 @@ static int rt5665_disable_ng2_put(struct snd_kcontrol *kcontrol,
 			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
 		snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
 			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
+		rt5665_noise_gate(codec, false);
 	} else {
-		if (snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2) == 0x0003)
+		if (snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2) == 0x0003) {
 			snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
 				RT5665_NG2_EN_MASK, RT5665_NG2_EN);
+			rt5665_noise_gate(codec, true);
+		}
 
 		if (snd_soc_read(codec, RT5665_MONO_OUT) & 0x30)
 			snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
@@ -3076,7 +3079,9 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 			RT5665_VOL_L_MUTE);
 		snd_soc_update_bits(codec, RT5665_CHARGE_PUMP_1,
 			0x730, 0x730);
-		rt5665_noise_gate(codec, true);
+
+		if (!rt5665->disable_ng2)
+			rt5665_noise_gate(codec, true);
 		break;
 
 	case SND_SOC_DAPM_POST_PMD:
