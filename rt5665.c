@@ -463,6 +463,7 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_STO_NG2_CTRL_3,		0x040c},
 	{RT5665_MONO_NG2_CTRL_2,	0x0041},
 	{RT5665_MONO_NG2_CTRL_3,	0x040c},
+	{RT5665_SAR_IL_CMD_9,		0xa0c0},
 };
 
 static int rt5665_reg_init(struct rt5665_priv *rt5665)
@@ -493,6 +494,7 @@ static bool rt5665_volatile_register(struct device *dev, unsigned int reg)
 	case RT5665_MONO_AMP_CALIB_STA1 ... RT5665_MONO_AMP_CALIB_STA6:
 	case RT5665_HP_IMP_SENS_CTRL_12 ... RT5665_HP_IMP_SENS_CTRL_15:
 	case RT5665_HP_CALIB_STA_1 ... RT5665_HP_CALIB_STA_11:
+	case RT5665_SAR_IL_CMD_2:
 	case RT5665_SAR_IL_CMD_4:
 	case RT5665_DEVICE_ID:
 		return true;
@@ -1439,7 +1441,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		snd_soc_dapm_sync(dapm);
 
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
-		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa291);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa297);
 
 		for (i = 0; i < 10; i++) {
 			msleep(10);
