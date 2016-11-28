@@ -4421,11 +4421,11 @@ static int rt5665_hw_params(struct snd_pcm_substream *substream,
 
 	switch (params_width(params)) {
 	case 16:
-		val_bits = 0x0100;
+		val_bits = 0x0300;
 		break;
 	case 20:
 		val_len |= RT5665_I2S_DL_20;
-		val_bits = 0x1300;
+		val_bits = 0x1400;
 		break;
 	case 24:
 		val_len |= RT5665_I2S_DL_24;
