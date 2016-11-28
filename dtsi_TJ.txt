@@ -1,0 +1,21 @@
+audio_codec: rt5665@1b {
+			compatible = "realtek,rt5665";
+			reg = <0x1b>;
+			realtek,in1-differential;
+			realtek,in3-differential;
+			realtek,in4-differential;
+			realtek,jd-src = <2>;
+			realtek,sar-hs-type = <614>;
+			realtek,sar-pb-vth0 = <102>;
+			realtek,sar-pb-vth1 = <142>;
+			realtek,sar-pb-vth2 = <236>;
+			realtek,sar-pb-vth3 = <480>;
+			imp_table = <
+				/*min max gain bias*/
+				0x0000 0x0013 8 6 // 8 ohm
+				0x0014 0x001f 2 6 // 16 ohm
+				0x0020 0x0037 0 6 // 32 ohm
+				0x0038 0x0064 0 1 // 64 ohm
+				0x0065 0xffff 0 1 // > 100 ohm
+			>;
+		};
