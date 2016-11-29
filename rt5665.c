@@ -1200,7 +1200,7 @@ static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
 {
 	if (enable) {
 		snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET,
-			0x8000, 0x8000);
+			0xc700, 0x8400);
 		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL1,
 			0x8000, 0x8000);
 		snd_soc_update_bits(codec, RT5665_SIL_PSV_CTRL5,
@@ -4400,7 +4400,7 @@ static int rt5665_hw_params(struct snd_pcm_substream *substream,
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-	unsigned int val_len = 0, val_clk, mask_clk, val_bits = 0x0100;
+	unsigned int val_len = 0, val_clk, mask_clk;
 	int pre_div, frame_size;
 
 	rt5665->lrck[dai->id] = params_rate(params);
@@ -4421,15 +4421,12 @@ static int rt5665_hw_params(struct snd_pcm_substream *substream,
 
 	switch (params_width(params)) {
 	case 16:
-		val_bits = 0x0300;
 		break;
 	case 20:
 		val_len |= RT5665_I2S_DL_20;
-		val_bits = 0x1400;
 		break;
 	case 24:
 		val_len |= RT5665_I2S_DL_24;
-		val_bits = 0x2500;
 		break;
 	case 8:
 		val_len |= RT5665_I2S_DL_8;
@@ -4465,7 +4462,6 @@ static int rt5665_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	snd_soc_update_bits(codec, RT5665_ADDA_CLK_1, mask_clk, val_clk);
-	snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET, 0x3700, val_bits);
 
 	switch (rt5665->lrck[dai->id]) {
 	case 192000:
