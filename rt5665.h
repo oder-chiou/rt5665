@@ -1495,7 +1495,12 @@
 #define RT5665_I2S3_RATE_SFT			4
 
 /* Depop Mode Control 1 (0x008e) */
-#define RT5665_PUMP_EN				(0x1 << 3)
+#define RT5665_EN_OUT_HP			(0x1 << 4)
+#define RT5665_EN_OUT_HP_BIT			4
+#define RT5665_PWR_PUMP_HP			(0x1 << 3)
+#define RT5665_PWR_PUMP_HP_BIT			3
+#define RT5665_PWR_CAPLESS			(0x1 << 0)
+#define RT5665_PWR_CAPLESS_BIT			0
 
 /* Depop Mode Control 2 (0x8f) */
 #define RT5665_DEPOP_MASK			(0x1 << 13)
