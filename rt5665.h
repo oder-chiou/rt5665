@@ -1997,6 +1997,7 @@ struct rt5665_priv {
 	struct delayed_work jack_detect_work;
 	struct delayed_work calibrate_work;
 	struct delayed_work jd_check_work;
+	struct delayed_work ng_check_work;
 	struct wake_lock jack_detect_wake_lock;
 
 	int sysclk;
