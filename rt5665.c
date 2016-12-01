@@ -1202,6 +1202,8 @@ EXPORT_SYMBOL_GPL(rt5665_sel_asrc_clk_src);
 
 static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
 {
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
 	if (enable) {
 		snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET,
 			0xc700, 0x8400);
@@ -1211,7 +1213,9 @@ static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
 			0x3000, 0x3000);
 		snd_soc_update_bits(codec, RT5665_HP_LOGIC_CTRL_3,
 			0x000c, 0x000c);
+		schedule_delayed_work(&rt5665->ng_check_work, 50);
 	} else {
+		cancel_delayed_work_sync(&rt5665->ng_check_work);
 		snd_soc_update_bits(codec, RT5665_HP_LOGIC_CTRL_3,
 			0x000c, 0);
 		snd_soc_update_bits(codec, RT5665_STO1_DAC_SIL_DET,
@@ -1534,6 +1538,31 @@ static void rt5665_jd_check_handler(struct work_struct *work)
 	} else {
 		schedule_delayed_work(&rt5665->jd_check_work, 500);
 	}
+}
+
+static void rt5665_ng_check_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, ng_check_work.work);
+	static bool set = false;
+
+	if ((snd_soc_read(rt5665->codec, RT5665_STO1_DAC_SIL_DET) & 0xc) == 0xc) {
+		if (!set) {
+			regmap_update_bits(rt5665->regmap, RT5665_DEPOP_1,
+				RT5665_EN_OUT_HP, 0);
+			regmap_update_bits(rt5665->regmap, RT5665_HP_LOGIC_CTRL_3,
+				0x000c, 0x000c);
+			regmap_update_bits(rt5665->regmap, RT5665_DEPOP_1,
+				RT5665_EN_OUT_HP, RT5665_EN_OUT_HP);
+			set = true;
+		}
+	} else {
+		set = false;
+		regmap_update_bits(rt5665->regmap, RT5665_HP_LOGIC_CTRL_3,
+			0x000c, 0x0000);
+	}
+
+	schedule_delayed_work(&rt5665->ng_check_work, 50);
 }
 
 int rt5665_set_jack_detect(struct snd_soc_codec *codec,
@@ -5507,6 +5536,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	INIT_DELAYED_WORK(&rt5665->jack_detect_work, rt5665_jack_detect_handler);
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
 	INIT_DELAYED_WORK(&rt5665->jd_check_work, rt5665_jd_check_handler);
+	INIT_DELAYED_WORK(&rt5665->ng_check_work, rt5665_ng_check_handler);
 
 #ifdef CONFIG_SWITCH
 	switch_dev_register(&rt5665_headset_switch);
