@@ -1922,7 +1922,7 @@ static int rt5665_disable_ng2_get(struct snd_kcontrol *kcontrol,
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	ucontrol->value.integer.value[0] = rt5665->disable_ng2;
-	
+
 	return 0;
 }
 
@@ -2075,6 +2075,26 @@ static int set_dmic_clk(struct snd_soc_dapm_widget *w,
 			RT5665_DMIC_CLK_MASK, idx << RT5665_DMIC_CLK_SFT);
 	}
 	return idx;
+}
+
+static int rt5665_Capless_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = w->codec;
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMD:
+		if (rt5665->impedance_gain_map == true)
+			snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8,
+				0x0700, rt5665->impedance_bias << 8);
+		rt5665_recalibrate(codec);
+		break;
+	default:
+		return 0;
+	}
+
+	return 0;
 }
 
 static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
@@ -3131,6 +3151,9 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
 			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
 		rt5665_noise_gate(codec, false);
+
+		snd_soc_update_bits(codec, RT5665_HP_CTRL_1, RT5665_L_MUTE |
+			RT5665_R_MUTE, RT5665_L_MUTE | RT5665_R_MUTE);
 		break;
 
 	default:
@@ -3709,7 +3732,7 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("Pump HP", RT5665_DEPOP_1, RT5665_PWR_PUMP_HP_BIT,
 		0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("Capless", RT5665_DEPOP_1, RT5665_PWR_CAPLESS_BIT,
-		0, NULL, 0),
+		0, rt5665_Capless_event, SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_SUPPLY("Charge Pump", SND_SOC_NOPM, 0, 0,
 		rt5665_charge_pump_event, SND_SOC_DAPM_PRE_PMU |
