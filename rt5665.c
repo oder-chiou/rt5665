@@ -1021,6 +1021,16 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 	reg13a = snd_soc_read(codec, RT5665_CHOP_DAC);
 	reg1db = snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2);
 
+	if (!(snd_soc_read(codec, RT5665_PWR_ANLG_1) &
+		(RT5665_PWR_VREF1 | RT5665_PWR_VREF2))) {
+		snd_soc_update_bits(codec, RT5665_PWR_ANLG_1, RT5665_PWR_VREF1 |
+			RT5665_PWR_FV1 | RT5665_PWR_VREF2 | RT5665_PWR_FV2,
+			RT5665_PWR_VREF1 | RT5665_PWR_VREF2);
+		usleep_range(15000, 20000);
+		snd_soc_update_bits(codec, RT5665_PWR_ANLG_1, RT5665_PWR_FV1 |
+			RT5665_PWR_FV2, RT5665_PWR_FV1 | RT5665_PWR_FV2);
+	}
+
 	snd_soc_update_bits(codec, RT5665_CLK_DET, 0x8001, 0x8001);
 	snd_soc_update_bits(codec, RT5665_CHOP_DAC, 0x3000, 0x3000);
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x3005);
@@ -1925,7 +1935,7 @@ static int rt5665_disable_ng2_get(struct snd_kcontrol *kcontrol,
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	ucontrol->value.integer.value[0] = rt5665->disable_ng2;
-	
+
 	return 0;
 }
 
