@@ -1015,11 +1015,23 @@ static const struct snd_kcontrol_new rt5665_if3_adc_swap_mux =
 
 static void rt5665_recalibrate(struct snd_soc_codec *codec)
 {
-	unsigned int reg13a, reg1db;
+	unsigned int reg06b, reg13a, reg1db;
 
+	reg06b = snd_soc_read(codec, RT5665_CLK_DET);
 	reg13a = snd_soc_read(codec, RT5665_CHOP_DAC);
 	reg1db = snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2);
 
+	if (!(snd_soc_read(codec, RT5665_PWR_ANLG_1) &
+		(RT5665_PWR_VREF1 | RT5665_PWR_VREF2))) {
+		snd_soc_update_bits(codec, RT5665_PWR_ANLG_1, RT5665_PWR_VREF1 |
+			RT5665_PWR_FV1 | RT5665_PWR_VREF2 | RT5665_PWR_FV2,
+			RT5665_PWR_VREF1 | RT5665_PWR_VREF2);
+		usleep_range(15000, 20000);
+		snd_soc_update_bits(codec, RT5665_PWR_ANLG_1, RT5665_PWR_FV1 |
+			RT5665_PWR_FV2, RT5665_PWR_FV1 | RT5665_PWR_FV2);
+	}
+
+	snd_soc_update_bits(codec, RT5665_CLK_DET, 0x8001, 0x8001);
 	snd_soc_update_bits(codec, RT5665_CHOP_DAC, 0x3000, 0x3000);
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x3005);
 	snd_soc_write(codec, RT5665_HP_CALIB_CTRL_2, 0x0321);
@@ -1036,6 +1048,7 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_HP_CALIB_CTRL_2, 0x0320);
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x2005);
 	snd_soc_update_bits(codec, RT5665_CHOP_DAC, 0x3000, reg13a);
+	snd_soc_update_bits(codec, RT5665_CLK_DET, 0x8001, reg06b);
 }
 
 static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
@@ -1210,7 +1223,7 @@ static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
 			0x3000, 0x3000);
 		snd_soc_update_bits(codec, RT5665_HP_LOGIC_CTRL_3,
 			0x000c, 0x000c);
-		schedule_delayed_work(&rt5665->ng_check_work, 500);
+		schedule_delayed_work(&rt5665->ng_check_work, 50);
 	} else {
 		cancel_delayed_work_sync(&rt5665->ng_check_work);
 		snd_soc_update_bits(codec, RT5665_HP_LOGIC_CTRL_3,
@@ -1559,7 +1572,7 @@ static void rt5665_ng_check_handler(struct work_struct *work)
 			0x000c, 0x0000);
 	}
 
-	schedule_delayed_work(&rt5665->ng_check_work, 500);
+	schedule_delayed_work(&rt5665->ng_check_work, 50);
 }
 
 int rt5665_set_jack_detect(struct snd_soc_codec *codec,
@@ -2105,6 +2118,15 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
+		if (rt5665->do_rek) {
+			if (rt5665->impedance_gain_map == true)
+				snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8,
+					0x0700, rt5665->impedance_bias << 8);
+
+			rt5665_recalibrate(codec);
+			rt5665->do_rek = false;
+		}
+
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK,
 			RT5665_PM_HP_HV | RT5665_OSW_L_EN);
@@ -3117,15 +3139,6 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		if (rt5665->do_rek) {
-			if (rt5665->impedance_gain_map == true)
-				snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8,
-					0x0700, rt5665->impedance_bias << 8);
-
-			rt5665_recalibrate(codec);
-			rt5665->do_rek = false;
-		}
-
 		snd_soc_update_bits(codec, RT5665_HP_CTRL_2, RT5665_L_MUTE |
 			RT5665_VOL_L_MUTE, RT5665_VOL_L_MUTE);
 		snd_soc_update_bits(codec, RT5665_HP_CTRL_1, RT5665_L_MUTE |
