@@ -1562,12 +1562,8 @@ static void rt5665_ng_check_handler(struct work_struct *work)
 
 	if ((snd_soc_read(rt5665->codec, RT5665_STO1_DAC_SIL_DET) & 0xc) == 0xc) {
 		if (!set) {
-			regmap_update_bits(rt5665->regmap, RT5665_DEPOP_1,
-				RT5665_EN_OUT_HP, 0);
 			regmap_update_bits(rt5665->regmap, RT5665_HP_LOGIC_CTRL_3,
 				0x000c, 0x000c);
-			regmap_update_bits(rt5665->regmap, RT5665_DEPOP_1,
-				RT5665_EN_OUT_HP, RT5665_EN_OUT_HP);
 			set = true;
 		}
 	} else {
