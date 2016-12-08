@@ -1391,7 +1391,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
-	unsigned int sar_hs_type, val, mask, i;
+	unsigned int sar_hs_type, val, mask;
 
 	if (jack_insert) {
 		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
