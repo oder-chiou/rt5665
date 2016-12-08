@@ -3152,6 +3152,7 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5665_HP_CTRL_2, RT5665_L_MUTE |
 			RT5665_VOL_L_MUTE, RT5665_L_MUTE);
 		snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0003);
+		usleep_range(3000, 5000);
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
 			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
 		rt5665_noise_gate(codec, false);
