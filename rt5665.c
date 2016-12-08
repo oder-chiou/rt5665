@@ -1469,13 +1469,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa297);
 
-		for (i = 0; i < 10; i++) {
-			msleep(10);
-
-			if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) &
-				mask)
-				return 0;
-		}
+		msleep(10);
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
