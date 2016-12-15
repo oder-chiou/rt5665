@@ -2088,10 +2088,13 @@ static int rt5665_capless_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
+	static unsigned long timeout = 0;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMD:
-		rt5665_recalibrate(codec);
+		if (time_after(jiffies, timeout))
+			rt5665_recalibrate(codec);
+		timeout = jiffies + (HZ * 60);
 		break;
 
 	default:
