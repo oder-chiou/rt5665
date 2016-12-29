@@ -56,7 +56,7 @@
     <ctl name="Stereo1 ADC MIXL ADC1 Switch" value="1"/>
     <ctl name="Stereo1 ADC MIXR ADC1 Switch" value="1"/>
 
-    <!-- The Disable NG2 is for NB. If wrong, please revise it -->
+    <!-- The Disable NG2 in all phone call -->
     <ctl name="Disable NG2" value="0"/>
 
     <!-- ================================================================ -->
@@ -752,16 +752,19 @@
     <path name="VoLTE-voice-handset-wb">
         <path name="rcv" />
             <ctl name="DAC1 Playback Volume" value="175"/>
+            <ctl name="Disable NG2" value="1"/>
     </path>
 
     <path name="VoLTE-voice-handset-extra-vol-wb">
         <path name="rcv" />
             <ctl name="DAC1 Playback Volume" value="175"/>
+            <ctl name="Disable NG2" value="1"/>
     </path>
 
     <path name="VoLTE-voice-handset-hac-wb">
         <path name="rcv" />
             <ctl name="DAC1 Playback Volume" value="175"/>
+            <ctl name="Disable NG2" value="1"/>
     </path>
 
     <path name="VoLTE-voice-speaker-wb">
@@ -776,6 +779,7 @@
         <path name="ear" />
             <ctl name="DAC1 Playback Volume" value="175"/>
             <ctl name="Headphone Playback Volume" value="31"/>
+            <ctl name="Disable NG2" value="1"/>
     </path>
 
     <!-- TX part -->
@@ -893,11 +897,13 @@
     <path name="VoLTE-video-handset-wb">
         <path name="rcv" />
             <ctl name="DAC1 Playback Volume" value="175"/>
+            <ctl name="Disable NG2" value="1"/>
     </path>
 
     <path name="VoLTE-video-handset-extra-vol-wb">
         <path name="rcv" />
             <ctl name="DAC1 Playback Volume" value="175"/>
+            <ctl name="Disable NG2" value="1"/>
     </path>
 
     <path name="VoLTE-video-speaker-wb">
@@ -912,6 +918,7 @@
         <path name="ear" />
             <ctl name="DAC1 Playback Volume" value="175"/>
             <ctl name="Headphone Playback Volume" value="31"/>
+            <ctl name="Disable NG2" value="1"/>
     </path>
 
     <!-- TX part -->
