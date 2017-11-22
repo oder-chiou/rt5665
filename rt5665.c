@@ -3178,10 +3178,24 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 static int set_dmic_power(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
+	struct snd_soc_codec *codec = w->codec;
+
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/*Add delay to avoid pop noise*/
 		msleep(150);
+		break;
+
+	case SND_SOC_DAPM_PRE_PMU:
+		snd_soc_update_bits(codec, RT5665_GPIO_CTRL_1,
+				RT5665_GP8_PIN_MASK, RT5665_GP8_PIN_DMIC2_SCL);
+		break;
+
+	case SND_SOC_DAPM_POST_PMD:
+		snd_soc_update_bits(codec, RT5665_GPIO_CTRL_1,
+				RT5665_GP8_PIN_MASK, RT5665_GP8_PIN_GPIO8);
+		snd_soc_update_bits(codec, RT5665_GPIO_CTRL_3,
+				RT5665_GP8_PF_MASK, RT5665_GP8_PF_IN);
 		break;
 
 	default:
@@ -3357,7 +3371,8 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 	SND_SOC_DAPM_SUPPLY("DMIC1 Power", RT5665_DMIC_CTRL_1,
 		RT5665_DMIC_1_EN_SFT, 0, set_dmic_power, SND_SOC_DAPM_POST_PMU),
 	SND_SOC_DAPM_SUPPLY("DMIC2 Power", RT5665_DMIC_CTRL_1,
-		RT5665_DMIC_2_EN_SFT, 0, set_dmic_power, SND_SOC_DAPM_POST_PMU),
+		RT5665_DMIC_2_EN_SFT, 0, set_dmic_power, SND_SOC_DAPM_POST_PMU |
+		SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	/* Boost */
 	SND_SOC_DAPM_PGA("BST1", SND_SOC_NOPM,
@@ -5505,7 +5520,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 	/* DMIC pin*/
 	rt5665->pdata.dmic1_data_pin = RT5665_DMIC1_DATA_GPIO4;
-	rt5665->pdata.dmic2_data_pin = RT5665_DMIC2_DATA_GPIO5;
+	rt5665->pdata.dmic2_data_pin = RT5665_DMIC2_DATA_IN2P;
 	if (rt5665->pdata.dmic1_data_pin != RT5665_DMIC1_NULL ||
 		rt5665->pdata.dmic2_data_pin != RT5665_DMIC2_NULL) {
 		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_2,
