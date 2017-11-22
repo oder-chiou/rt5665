@@ -53,11 +53,11 @@ static struct {
 	unsigned int gain; /* Register value to set for this measurement */
 	unsigned int bias;
 } hp_gain_table[] = {
-	{0x0000, 0x000d, 0, 6}, // 8 ohm
-	{0x000e, 0x0019, 0, 6}, // 16 ohm
-	{0x001a, 0x0035, 0, 6}, // 32 ohm
-	{0x0036, 0x0067, 0, 1}, // 64 ohm
-	{0x0068, 0xffff, 0, 1}, // > 100 ohm
+	{0x0000, 0x000d, 0, 6}, /* 8 ohm */
+	{0x000e, 0x0019, 0, 6}, /* 16 ohm */
+	{0x001a, 0x0035, 0, 6}, /* 32 ohm */
+	{0x0036, 0x0067, 0, 1}, /* 64 ohm */
+	{0x0068, 0xffff, 0, 1}, /* > 100 ohm */
 };
 
 static const struct reg_default rt5665_reg[] = {
@@ -452,13 +452,13 @@ static const struct reg_default rt5665_reg[] = {
 };
 
 static struct reg_default rt5665_init_list[] = {
-	{RT5665_BIAS_CUR_CTRL_8, 	0xa602},
-	{RT5665_TDM_CTRL_6, 		0x0101},
-	{RT5665_ASRC_8, 		0x0120},
-	{RT5665_TEST_MODE_CTRL_2, 	0x0015},
-	{RT5665_EJD_CTRL_1, 		0x6040},
-	{RT5665_EJD_CTRL_4, 		0xc000},
-	{RT5665_EJD_CTRL_5, 		0xa60a},
+	{RT5665_BIAS_CUR_CTRL_8,	0xa602},
+	{RT5665_TDM_CTRL_6,		0x0101},
+	{RT5665_ASRC_8,			0x0120},
+	{RT5665_TEST_MODE_CTRL_2,	0x0015},
+	{RT5665_EJD_CTRL_1,		0x6040},
+	{RT5665_EJD_CTRL_4,		0xc000},
+	{RT5665_EJD_CTRL_5,		0xa60a},
 	{RT5665_STO_NG2_CTRL_2,		0x0041},
 	{RT5665_STO_NG2_CTRL_3,		0x040c},
 	{RT5665_MONO_NG2_CTRL_2,	0x0041},
@@ -491,13 +491,13 @@ static bool rt5665_volatile_register(struct device *dev, unsigned int reg)
 	case RT5665_AJD1_CTRL:
 	case RT5665_JD_CTRL_3:
 	case RT5665_STO_NG2_CTRL_1:
+	case RT5665_SAR_IL_CMD_2:
+	case RT5665_SAR_IL_CMD_4:
+	case RT5665_DEVICE_ID:
 	case RT5665_STO1_DAC_SIL_DET ... RT5665_STO2_DAC_SIL_DET:
 	case RT5665_MONO_AMP_CALIB_STA1 ... RT5665_MONO_AMP_CALIB_STA6:
 	case RT5665_HP_IMP_SENS_CTRL_12 ... RT5665_HP_IMP_SENS_CTRL_15:
 	case RT5665_HP_CALIB_STA_1 ... RT5665_HP_CALIB_STA_11:
-	case RT5665_SAR_IL_CMD_2:
-	case RT5665_SAR_IL_CMD_4:
-	case RT5665_DEVICE_ID:
 		return true;
 	default:
 		return false;
@@ -1042,7 +1042,7 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, RT5665_DIG_MISC, 0x8000, 0);
 
 	while (snd_soc_read(codec, RT5665_HP_CALIB_STA_1) & 0x8000)
-		msleep(10);
+		msleep(20);
 
 	snd_soc_update_bits(codec, RT5665_DIG_MISC, 0x4000, 0);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, reg1db);
@@ -1072,16 +1072,15 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 
 		dev_dbg(codec->dev, "%s %d Impedance value\n", __func__,
 			rt5665->impedance_value);
-		if (reg05 > rt5665->impedance_gain) {
+		if (reg05 > rt5665->impedance_gain)
 			reg05 = reg05 - rt5665->impedance_gain;
-		} else {
+		else
 			reg05 = 0x0;
-		}
-		if (reg06 > rt5665->impedance_gain) {
+
+		if (reg06 > rt5665->impedance_gain)
 			reg06 = reg06 - rt5665->impedance_gain;
-		} else {
+		else
 			reg06 = 0x0;
-		}
 
 		ucontrol->value.integer.value[0] = reg05;
 		ucontrol->value.integer.value[1] = reg06;
@@ -1266,12 +1265,12 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_HPL_GAIN, 0);
 	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
 		RT5665_L_MUTE | RT5665_R_MUTE, RT5665_L_MUTE | RT5665_R_MUTE);
-	snd_soc_write(codec, RT5665_STO2_ADC_MIXER, 0x6c6c); //
+	snd_soc_write(codec, RT5665_STO2_ADC_MIXER, 0x6c6c); /* */
 	snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
-		RT5665_L_MUTE | RT5665_R_MUTE, 0); //
-//	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0x200);
+		RT5665_L_MUTE | RT5665_R_MUTE, 0); /* */
+	/* snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0x200); */
 	snd_soc_update_bits(codec, RT5665_ADDA_CLK_1, RT5665_I2S_PD1_MASK,
-		RT5665_I2S_PD1_2); //
+		RT5665_I2S_PD1_2); /* */
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0x3320);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_1, 0x2400);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0101);
@@ -1287,9 +1286,10 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 		mask = 0x0010;
 
 	for (i = 0; i < 60; i++) {
-		msleep(10);
+		msleep(20);
 
-		if (!(snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_12) & 0x8000)) {
+		if (!(snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_12) & 0x8000)
+			) {
 			rt5665->impedance_value =
 				snd_soc_read(codec, RT5665_HP_IMP_SENS_CTRL_14);
 			break;
@@ -1308,7 +1308,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, reg1db);
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_1, 0x0000);
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0xb320);
-//	snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0);
+	/* snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0); */
 	snd_soc_write(codec, RT5665_STO1_ADC_DIG_VOL, reg1c);
 
 	mutex_unlock(&codec->component.card->dapm_mutex);
@@ -1330,7 +1330,8 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 			continue;
 
 		dev_dbg(codec->dev, "[%d] SET GAIN %d for 0x%x Impedance value\n",
-				i, hp_gain_table[i].gain, rt5665->impedance_value);
+				i, hp_gain_table[i].gain,
+				rt5665->impedance_value);
 		rt5665->impedance_gain = hp_gain_table[i].gain;
 		if (rt5665->impedance_bias != hp_gain_table[i].bias)
 			rt5665->do_rek = true;
@@ -1406,7 +1407,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST, 0x8000,
 			0x8000);
 
-		msleep(10);
+		msleep(20);
 		regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
 		if (val & 0x4) {
 			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
@@ -1431,10 +1432,10 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
 				0xc000, 0);
 
-			msleep(10);
+			msleep(20);
 			regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
 			while (val & 0x4) {
-				msleep(10);
+				msleep(20);
 				regmap_read(rt5665->regmap, RT5665_GPIO_STA,
 					&val);
 
@@ -1469,7 +1470,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
 		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa297);
 
-		msleep(10);
+		msleep(20);
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
@@ -1552,12 +1553,13 @@ static void rt5665_ng_check_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, ng_check_work.work);
-	static bool set = false;
+	static bool set;
 
-	if ((snd_soc_read(rt5665->codec, RT5665_STO1_DAC_SIL_DET) & 0xc) == 0xc) {
+	if ((snd_soc_read(rt5665->codec, RT5665_STO1_DAC_SIL_DET) & 0xc)
+		== 0xc) {
 		if (!set) {
-			regmap_update_bits(rt5665->regmap, RT5665_HP_LOGIC_CTRL_3,
-				0x000c, 0x000c);
+			regmap_update_bits(rt5665->regmap,
+				RT5665_HP_LOGIC_CTRL_3, 0x000c, 0x000c);
 			set = true;
 		}
 	} else {
@@ -1633,7 +1635,8 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 		/* jack in */
 		if (rt5665->jack_type == 0) {
 			/* jack was out, report jack type */
-			rt5665->jack_type = rt5665_headset_detect(rt5665->codec, 1);
+			rt5665->jack_type = rt5665_headset_detect(rt5665->codec,
+				1);
 #ifdef CONFIG_SWITCH
 			if (rt5665->jack_type == SND_JACK_HEADSET)
 				switch_set_state(&rt5665_headset_switch, 1);
@@ -1705,11 +1708,12 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	}
 }
 
-static const char *rt5665_jack_type_mode[] = {
+static const char * const rt5665_jack_type_mode[] = {
 	"Disable", "read"
 };
 
-static const SOC_ENUM_SINGLE_DECL(rt5665_jack_type_enum, 0, 0, rt5665_jack_type_mode);
+static const SOC_ENUM_SINGLE_DECL(rt5665_jack_type_enum, 0, 0,
+	rt5665_jack_type_mode);
 
 static int rt5665_jack_type_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
@@ -1730,7 +1734,8 @@ static int rt5665_jack_type_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static const SOC_ENUM_SINGLE_DECL(rt5665_button_type_enum, 0, 0, rt5665_jack_type_mode);
+static const SOC_ENUM_SINGLE_DECL(rt5665_button_type_enum, 0, 0,
+	rt5665_jack_type_mode);
 
 static int rt5665_button_type_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
@@ -2088,7 +2093,7 @@ static int rt5665_capless_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
-	static unsigned long timeout = 0;
+	static unsigned long timeout;
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMD:
@@ -2114,8 +2119,9 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 	case SND_SOC_DAPM_PRE_PMU:
 		if (rt5665->do_rek) {
 			if (rt5665->impedance_gain_map == true)
-				snd_soc_update_bits(codec, RT5665_BIAS_CUR_CTRL_8,
-					0x0700, rt5665->impedance_bias << 8);
+				snd_soc_update_bits(codec,
+					RT5665_BIAS_CUR_CTRL_8, 0x0700,
+					rt5665->impedance_bias << 8);
 
 			rt5665_recalibrate(codec);
 			rt5665->do_rek = false;
@@ -3623,12 +3629,18 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 
 	/* Audio Interface */
 	SND_SOC_DAPM_AIF_IN("AIF1RX", "AIF1 Playback", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("AIF1_1TX", "AIF1_1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("AIF1_2TX", "AIF1_2 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_IN("AIF2_1RX", "AIF2_1 Playback", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_IN("AIF2_2RX", "AIF2_2 Playback", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("AIF2_1TX", "AIF2_1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("AIF2_2TX", "AIF2_2 Capture", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_AIF_OUT("AIF1_1TX", "AIF1_1 Capture", 0, SND_SOC_NOPM, 0,
+		0),
+	SND_SOC_DAPM_AIF_OUT("AIF1_2TX", "AIF1_2 Capture", 0, SND_SOC_NOPM, 0,
+		0),
+	SND_SOC_DAPM_AIF_IN("AIF2_1RX", "AIF2_1 Playback", 0, SND_SOC_NOPM, 0,
+		0),
+	SND_SOC_DAPM_AIF_IN("AIF2_2RX", "AIF2_2 Playback", 0, SND_SOC_NOPM, 0,
+		0),
+	SND_SOC_DAPM_AIF_OUT("AIF2_1TX", "AIF2_1 Capture", 0, SND_SOC_NOPM, 0,
+		0),
+	SND_SOC_DAPM_AIF_OUT("AIF2_2TX", "AIF2_2 Capture", 0, SND_SOC_NOPM, 0,
+		0),
 	SND_SOC_DAPM_AIF_IN("AIF3RX", "AIF3 Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("AIF3TX", "AIF3 Capture", 0, SND_SOC_NOPM, 0, 0),
 
@@ -4915,11 +4927,14 @@ static ssize_t rt5665_codec_adb_store(struct device *dev,
 			value = 0;
 			for ( ; i < count; i++) {
 				if (*(buf + i) <= '9' && *(buf + i) >= '0')
-					value = (value << 4) | (*(buf + i) - '0');
+					value = (value << 4) |
+						(*(buf + i) - '0');
 				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
-					value = (value << 4) | ((*(buf + i) - 'a') + 0xa);
+					value = (value << 4) |
+						((*(buf + i) - 'a') + 0xa);
 				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
-					value = (value << 4) | ((*(buf + i) - 'A') + 0xa);
+					value = (value << 4) |
+						((*(buf + i) - 'A') + 0xa);
 				else
 					break;
 			}
@@ -4936,11 +4951,14 @@ static ssize_t rt5665_codec_adb_store(struct device *dev,
 			value = 0;
 			for ( ; i < count; i++) {
 				if (*(buf + i) <= '9' && *(buf + i) >= '0')
-					value = (value << 4) | (*(buf + i) - '0');
+					value = (value << 4) |
+						(*(buf + i) - '0');
 				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
-					value = (value << 4) | ((*(buf + i) - 'a') + 0xa);
+					value = (value << 4) |
+						((*(buf + i) - 'a') + 0xa);
 				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
-					value = (value << 4) | ((*(buf + i) - 'A') + 0xa);
+					value = (value << 4) |
+						((*(buf + i) - 'A') + 0xa);
 				else
 					break;
 			}
@@ -4952,11 +4970,14 @@ static ssize_t rt5665_codec_adb_store(struct device *dev,
 			value = 0;
 			for ( ; i < count; i++) {
 				if (*(buf + i) <= '9' && *(buf + i) >= '0')
-					value = (value << 4) | (*(buf + i) - '0');
+					value = (value << 4) |
+						(*(buf + i) - '0');
 				else if (*(buf + i) <= 'f' && *(buf + i) >= 'a')
-					value = (value << 4) | ((*(buf + i) - 'a') + 0xa);
+					value = (value << 4) |
+						((*(buf + i) - 'a') + 0xa);
 				else if (*(buf + i) <= 'F' && *(buf + i) >= 'A')
-					value = (value << 4) | ((*(buf + i) - 'A') + 0xa);
+					value = (value << 4) |
+						((*(buf + i) - 'A') + 0xa);
 				else
 					break;
 			}
@@ -4999,7 +5020,8 @@ static int rt5665_probe(struct snd_soc_codec *codec)
 	ret = device_create_file(codec->dev, &dev_attr_codec_reg_adb);
 	if (ret != 0) {
 		dev_err(codec->dev,
-			"Failed to create codec_reg_adb sysfs files: %d\n", ret);
+			"Failed to create codec_reg_adb sysfs files: %d\n",
+			ret);
 		return ret;
 	}
 
@@ -5215,7 +5237,8 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth3",
 		&rt5665->pdata.sar_pb_vth3);
 
-	if (!of_property_read_u32_array(dev->of_node, "imp_table", data, (len * 4))) {
+	if (!of_property_read_u32_array(dev->of_node, "imp_table", data,
+		(len * 4))) {
 		pr_debug("%s: data from DT\n", __func__);
 
 		for (i = 0; i < len; i++) {
@@ -5345,14 +5368,14 @@ static void rt5665_calibrate_handler(struct work_struct *work)
 
 	while (!rt5665->codec->component.card->instantiated) {
 		pr_debug("%s\n", __func__);
-		msleep(10);
+		msleep(20);
 	}
 
 	rt5665_calibrate(rt5665);
 }
 
-static ssize_t rt5665_device_read(struct file *file, char __user * buffer,
-	size_t length, loff_t * offset)
+static ssize_t rt5665_device_read(struct file *file, char __user *buffer,
+	size_t length, loff_t *offset)
 {
 	char sar_adc_string[5];
 	size_t ret;
@@ -5370,7 +5393,7 @@ static ssize_t rt5665_device_read(struct file *file, char __user * buffer,
 	return ret;
 }
 
-struct file_operations rt5665_fops = {
+const struct file_operations rt5665_fops = {
 	.owner = THIS_MODULE,
 	.read = rt5665_device_read,
 };
@@ -5449,7 +5472,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 	regmap_read(rt5665->regmap, RT5665_MAGIC, &rt5665->magic);
 	regmap_read(rt5665->regmap, RT5665_RESET, &val);
-	switch(val) {
+	switch (val) {
 	case 0x0:
 		rt5665->id = CODEC_5666;
 		break;
@@ -5558,7 +5581,8 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	if (!rt5665->magic)
 		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x00f0, 0);
 
-	INIT_DELAYED_WORK(&rt5665->jack_detect_work, rt5665_jack_detect_handler);
+	INIT_DELAYED_WORK(&rt5665->jack_detect_work,
+		rt5665_jack_detect_handler);
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
 	INIT_DELAYED_WORK(&rt5665->jd_check_work, rt5665_jd_check_handler);
 	INIT_DELAYED_WORK(&rt5665->ng_check_work, rt5665_ng_check_handler);
