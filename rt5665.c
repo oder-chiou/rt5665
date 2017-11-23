@@ -5519,8 +5519,6 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 			RT5665_IN4_DF_MASK, RT5665_IN4_DF_MASK);
 
 	/* DMIC pin*/
-	rt5665->pdata.dmic1_data_pin = RT5665_DMIC1_DATA_GPIO4;
-	rt5665->pdata.dmic2_data_pin = RT5665_DMIC2_DATA_IN2P;
 	if (rt5665->pdata.dmic1_data_pin != RT5665_DMIC1_NULL ||
 		rt5665->pdata.dmic2_data_pin != RT5665_DMIC2_NULL) {
 		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_2,
