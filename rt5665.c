@@ -2006,6 +2006,12 @@ static const struct snd_kcontrol_new rt5665_snd_controls[] = {
 	SOC_DOUBLE_TLV("IN Capture Volume", RT5665_INL1_INR1_VOL,
 		RT5665_INL_VOL_SFT, RT5665_INR_VOL_SFT, 31, 1, in_vol_tlv),
 
+	/* ADC Digital Volume Control for Samsung */
+	SOC_SINGLE_TLV("STO1 ADC Left Capture Volume", RT5665_STO1_ADC_DIG_VOL,
+		RT5665_L_VOL_SFT, 127, 0, adc_vol_tlv),
+	SOC_SINGLE_TLV("STO1 ADC Right Capture Volume", RT5665_STO1_ADC_DIG_VOL,
+		RT5665_R_VOL_SFT, 127, 0, adc_vol_tlv),
+
 	/* ADC Digital Volume Control */
 	SOC_DOUBLE("STO1 ADC Capture Switch", RT5665_STO1_ADC_DIG_VOL,
 		RT5665_L_MUTE_SFT, RT5665_R_MUTE_SFT, 1, 1),
