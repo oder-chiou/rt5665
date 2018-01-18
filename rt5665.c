@@ -1645,42 +1645,70 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #endif
 			rt5665->irq_work_delay_time = 0;
 		} else {
-			sar_adc_value = snd_soc_read(rt5665->codec,
-				RT5665_SAR_IL_CMD_4) & 0x7ff;
+			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
+				0x200, 0x200);
+			regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST,
+				0x8000, 0x8000);
 
-			/* jack is already in, report button event */
-			rt5665->jack_type = SND_JACK_HEADSET;
-			btn_type = rt5665_button_detect(rt5665->codec);
-			switch (btn_type) {
-			case 0x8000:
-			case 0x4000:
-			case 0x2000:
-				rt5665->jack_type |= SND_JACK_BTN_0;
-				break;
-			case 0x1000:
-			case 0x0800:
-			case 0x0400:
-				rt5665->jack_type |= SND_JACK_BTN_1;
-				break;
-			case 0x0200:
-			case 0x0100:
-			case 0x0080:
-				rt5665->jack_type |= SND_JACK_BTN_2;
-				break;
-			case 0x0040:
-			case 0x0020:
-			case 0x0010:
-				rt5665->jack_type |= SND_JACK_BTN_3;
-				break;
-			case 0x0000: /* unpressed */
-				break;
-			default:
-				btn_type = 0;
-				dev_err(rt5665->codec->dev,
-					"Unexpected button code 0x%04x\n",
-					btn_type);
-				break;
+			msleep(20);
+			regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
+			if (val & 0x4) {
+				regmap_update_bits(rt5665->regmap,
+					RT5665_EJD_CTRL_1, 0x180, 0);
+
+				do {
+					msleep(20);
+					regmap_read(rt5665->regmap,
+						RT5665_GPIO_STA, &val);
+				} while (val & 0x4);
+
+				regmap_update_bits(rt5665->regmap,
+					RT5665_EJD_CTRL_1, 0x180, 0x180);
+
+				rt5665_button_detect(rt5665->codec);
+			} else {
+				sar_adc_value = snd_soc_read(rt5665->codec,
+					RT5665_SAR_IL_CMD_4) & 0x7ff;
+
+				/* jack is already in, report button event */
+				rt5665->jack_type = SND_JACK_HEADSET;
+				btn_type = rt5665_button_detect(rt5665->codec);
+				switch (btn_type) {
+				case 0x8000:
+				case 0x4000:
+				case 0x2000:
+					rt5665->jack_type |= SND_JACK_BTN_0;
+					break;
+				case 0x1000:
+				case 0x0800:
+				case 0x0400:
+					rt5665->jack_type |= SND_JACK_BTN_1;
+					break;
+				case 0x0200:
+				case 0x0100:
+				case 0x0080:
+					rt5665->jack_type |= SND_JACK_BTN_2;
+					break;
+				case 0x0040:
+				case 0x0020:
+				case 0x0010:
+					rt5665->jack_type |= SND_JACK_BTN_3;
+					break;
+				case 0x0000: /* unpressed */
+					break;
+				default:
+					btn_type = 0;
+					dev_err(rt5665->codec->dev,
+						"Unexpected button code 0x%04x\n",
+						btn_type);
+					break;
+				}
 			}
+
+			regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST,
+				0x8000, 0);
+			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
+				0x200, 0);
 
 			dev_dbg(codec->dev, "jack_type = 0x%04x\n",
 				rt5665->jack_type);
