@@ -1243,7 +1243,7 @@ static void rt5665_noise_gate(struct snd_soc_codec *codec, bool enable)
 static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 	unsigned int reg1c, reg2a, reg1db;
 	int i, mask;
 
@@ -1391,7 +1391,7 @@ static void rt5665_enable_push_button_irq(struct snd_soc_codec *codec,
 static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-	struct snd_soc_dapm_context *dapm = &codec->dapm;
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
 	unsigned int sar_hs_type, val, mask;
 
 	if (jack_insert) {
@@ -2106,7 +2106,7 @@ static const struct snd_kcontrol_new rt5665_snd_controls[] = {
 static int set_dmic_clk(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	int pd, idx = -EINVAL;
 
@@ -2126,7 +2126,7 @@ static int set_dmic_clk(struct snd_soc_dapm_widget *w,
 static int rt5665_capless_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	static unsigned long timeout;
 
 	switch (event) {
@@ -2146,7 +2146,7 @@ static int rt5665_capless_event(struct snd_soc_dapm_widget *w,
 static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	switch (event) {
@@ -2183,7 +2183,7 @@ static int is_sys_clk_from_pll(struct snd_soc_dapm_widget *w,
 			 struct snd_soc_dapm_widget *sink)
 {
 	unsigned int val;
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
 	val = snd_soc_read(codec, RT5665_GLB_CLK);
 	val &= RT5665_SCLK_SRC_MASK;
@@ -2197,7 +2197,7 @@ static int is_using_asrc(struct snd_soc_dapm_widget *w,
 			 struct snd_soc_dapm_widget *sink)
 {
 	unsigned int reg, shift, val;
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
 	switch (w->shift) {
 	case RT5665_ADC_MONO_R_ASRC_SFT:
@@ -3133,7 +3133,7 @@ static const struct snd_kcontrol_new pdm_r_switch =
 static int rt5665_mono_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	switch (event) {
@@ -3168,7 +3168,7 @@ static int rt5665_mono_event(struct snd_soc_dapm_widget *w,
 static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	switch (event) {
@@ -3212,7 +3212,7 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 static int set_dmic_power(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -3242,7 +3242,7 @@ static int set_dmic_power(struct snd_soc_dapm_widget *w,
 static int rt5655_set_verf(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -3300,7 +3300,7 @@ static int rt5655_set_verf(struct snd_soc_dapm_widget *w,
 static int rt5665_micbias2_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
-	struct snd_soc_codec *codec = w->codec;
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -4859,8 +4859,6 @@ static int rt5665_set_bias_level(struct snd_soc_codec *codec,
 		break;
 	}
 
-	codec->dapm.bias_level = level;
-
 	return 0;
 }
 
@@ -5215,12 +5213,14 @@ static struct snd_soc_codec_driver soc_codec_dev_rt5665 = {
 	.resume = rt5665_resume,
 	.set_bias_level = rt5665_set_bias_level,
 	.idle_bias_off = true,
-	.controls = rt5665_snd_controls,
-	.num_controls = ARRAY_SIZE(rt5665_snd_controls),
-	.dapm_widgets = rt5665_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(rt5665_dapm_widgets),
-	.dapm_routes = rt5665_dapm_routes,
-	.num_dapm_routes = ARRAY_SIZE(rt5665_dapm_routes),
+	.component_driver = {
+		.controls = rt5665_snd_controls,
+		.num_controls = ARRAY_SIZE(rt5665_snd_controls),
+		.dapm_widgets = rt5665_dapm_widgets,
+		.num_dapm_widgets = ARRAY_SIZE(rt5665_dapm_widgets),
+		.dapm_routes = rt5665_dapm_routes,
+		.num_dapm_routes = ARRAY_SIZE(rt5665_dapm_routes),
+	},
 };
 
 
