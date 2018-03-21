@@ -3213,6 +3213,7 @@ static int set_dmic_power(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
 	struct snd_soc_codec *codec = w->codec;
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
@@ -3221,15 +3222,15 @@ static int set_dmic_power(struct snd_soc_dapm_widget *w,
 		break;
 
 	case SND_SOC_DAPM_PRE_PMU:
-		snd_soc_update_bits(codec, RT5665_GPIO_CTRL_1,
+		if (rt5665->pdata.dmic2_data_pin != RT5665_DMIC2_NULL)
+			snd_soc_update_bits(codec, RT5665_GPIO_CTRL_1,
 				RT5665_GP8_PIN_MASK, RT5665_GP8_PIN_DMIC2_SCL);
 		break;
 
 	case SND_SOC_DAPM_POST_PMD:
-		snd_soc_update_bits(codec, RT5665_GPIO_CTRL_1,
+		if (rt5665->pdata.dmic2_data_pin != RT5665_DMIC2_NULL)
+			snd_soc_update_bits(codec, RT5665_GPIO_CTRL_1,
 				RT5665_GP8_PIN_MASK, RT5665_GP8_PIN_GPIO8);
-		snd_soc_update_bits(codec, RT5665_GPIO_CTRL_3,
-				RT5665_GP8_PF_MASK, RT5665_GP8_PF_IN);
 		break;
 
 	default:
@@ -5557,8 +5558,8 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 		rt5665->pdata.dmic2_data_pin != RT5665_DMIC2_NULL) {
 		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_2,
 			RT5665_GP9_PIN_MASK, RT5665_GP9_PIN_DMIC1_SCL);
-		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_1,
-				RT5665_GP8_PIN_MASK, RT5665_GP8_PIN_DMIC2_SCL);
+		regmap_update_bits(rt5665->regmap, RT5665_GPIO_CTRL_3,
+			RT5665_GP8_PF_MASK, RT5665_GP8_PF_IN);
 		switch (rt5665->pdata.dmic1_data_pin) {
 		case RT5665_DMIC1_DATA_IN2N:
 			regmap_update_bits(rt5665->regmap, RT5665_DMIC_CTRL_1,
