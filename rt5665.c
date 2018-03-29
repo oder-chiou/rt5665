@@ -245,6 +245,7 @@ static const struct reg_default rt5665_reg[] = {
 	{0x0125, 0x0410},
 	{0x0132, 0x0000},
 	{0x0133, 0x0000},
+	{0x0136, 0x5555},
 	{0x0137, 0x5540},
 	{0x0138, 0x3700},
 	{0x0139, 0x79a1},
@@ -691,7 +692,8 @@ static bool rt5665_readable_register(struct device *dev, unsigned int reg)
 	case RT5665_CHARGE_PUMP_1:
 	case RT5665_DIG_IN_CTRL_1:
 	case RT5665_DIG_IN_CTRL_2:
-	case RT5665_PAD_DRIVING_CTRL:
+	case RT5665_PAD_DRIVING_CTRL_1:
+	case RT5665_PAD_DRIVING_CTRL_2:
 	case RT5665_SOFT_RAMP_DEPOP:
 	case RT5665_PLL:
 	case RT5665_CHOP_DAC:
