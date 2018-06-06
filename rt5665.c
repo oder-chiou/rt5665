@@ -23,6 +23,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/cdev.h>
+#include <linux/miscdevice.h>
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
