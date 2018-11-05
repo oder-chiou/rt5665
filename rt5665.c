@@ -1647,6 +1647,8 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
 			rt5665->irq_work_delay_time = 0;
+			regmap_update_bits(rt5665->regmap, RT5665_JD1_THD,
+				0x0030, 0x0020);
 		} else {
 			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
 				0x200, 0x200);
@@ -1723,6 +1725,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 		switch_set_state(&rt5665_headset_switch, 0);
 #endif
 		rt5665->irq_work_delay_time = 50;
+		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 	}
 
 	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
