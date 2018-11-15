@@ -2013,9 +2013,11 @@ struct rt5665_priv {
 	int pll_out;
 
 	int jack_type;
+	int btn_det;
 	int irq;
 	int irq_work_delay_time;
 
+	unsigned int adc_val;
 	unsigned int adb_reg_addr[0x100];
 	unsigned int adb_reg_value[0x100];
 	unsigned short adb_reg_num;

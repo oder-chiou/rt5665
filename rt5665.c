@@ -1477,6 +1477,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 
 		sar_adc_value = snd_soc_read(rt5665->codec,
 			RT5665_SAR_IL_CMD_4) & 0x7ff;
+		rt5665->adc_val = sar_adc_value;
 
 		sar_hs_type = rt5665->pdata.sar_hs_type ?
 			rt5665->pdata.sar_hs_type : 729;
@@ -1508,6 +1509,8 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		if (rt5665->jack_type == SND_JACK_HEADSET)
 			rt5665_enable_push_button_irq(codec, false);
 		rt5665->jack_type = 0;
+		sar_adc_value = 0;
+		rt5665->adc_val = sar_adc_value;
 	}
 
 	dev_dbg(codec->dev, "jack_type = %d\n", rt5665->jack_type);
@@ -1674,6 +1677,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 			} else {
 				sar_adc_value = snd_soc_read(rt5665->codec,
 					RT5665_SAR_IL_CMD_4) & 0x7ff;
+				rt5665->adc_val = sar_adc_value;
 
 				/* jack is already in, report button event */
 				rt5665->jack_type = SND_JACK_HEADSET;
@@ -1708,6 +1712,8 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 						btn_type);
 					break;
 				}
+
+				rt5665->btn_det = (rt5665->jack_type & SND_JACK_BTN_0) == SND_JACK_BTN_0 ? 1 : 0;
 			}
 
 			regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST,
