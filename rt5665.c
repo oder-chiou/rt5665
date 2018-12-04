@@ -1597,7 +1597,8 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_6, 0x2000,
 			0x2000);
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-			RT5665_OSW_L_MASK, RT5665_OSW_L_DIS);
+			RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+			RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 		break;
 
 	case RT5665_JD1:
@@ -2178,15 +2179,16 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 		}
 
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK,
-			RT5665_PM_HP_HV | RT5665_OSW_L_EN);
+			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+			RT5665_PM_HP_HV | RT5665_OSW_L_EN | RT5665_OSW_R_EN);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK, RT5665_PM_HP_LV);
 		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
 			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-				RT5665_OSW_L_MASK, RT5665_OSW_L_DIS);
+				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 		break;
 	default:
 		return 0;
