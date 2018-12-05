@@ -467,7 +467,7 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_MONO_NG2_CTRL_3,	0x040c},
 	{RT5665_SAR_IL_CMD_9,		0xa0c0},
 	{RT5665_CHARGE_PUMP_1,		0x0730},
-	{RT5665_JD1_THD,		0x0dcd);
+	{RT5665_JD1_THD,		0x0dcd},
 };
 
 static int rt5665_reg_init(struct rt5665_priv *rt5665)
