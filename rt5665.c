@@ -467,6 +467,7 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_MONO_NG2_CTRL_3,	0x040c},
 	{RT5665_SAR_IL_CMD_9,		0xa0c0},
 	{RT5665_CHARGE_PUMP_1,		0x0730},
+	{RT5665_JD1_THD,		0x0dcd);
 };
 
 static int rt5665_reg_init(struct rt5665_priv *rt5665)
@@ -1651,8 +1652,6 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
 			rt5665->irq_work_delay_time = 0;
-			regmap_update_bits(rt5665->regmap, RT5665_JD1_THD,
-				0x0030, 0x0020);
 		} else {
 			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
 				0x200, 0x200);
@@ -1732,7 +1731,6 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 		switch_set_state(&rt5665_headset_switch, 0);
 #endif
 		rt5665->irq_work_delay_time = 50;
-		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 	}
 
 	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
@@ -2181,8 +2179,10 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
 			RT5665_PM_HP_HV | RT5665_OSW_L_EN | RT5665_OSW_R_EN);
+		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0x0020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
+		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK, RT5665_PM_HP_LV);
 		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
