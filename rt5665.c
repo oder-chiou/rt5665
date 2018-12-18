@@ -5406,6 +5406,9 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 	regcache_mark_dirty(rt5665->regmap);
 	regcache_sync(rt5665->regmap);
 
+	//volatile settings
+	regmap_write(rt5665->regmap, RT5665_STO1_DAC_SIL_DET, 0x4121);
+
 	mutex_unlock(&codec->component.card->dapm_mutex);
 
 	if (rt5665->irq) {
