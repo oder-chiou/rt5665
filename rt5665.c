@@ -1017,8 +1017,48 @@ static const struct snd_kcontrol_new rt5665_if3_dac_swap_mux =
 static const struct snd_kcontrol_new rt5665_if3_adc_swap_mux =
 	SOC_DAPM_ENUM("IF3 ADC Swap Source", rt5665_if3_adc_enum);
 
+static void rt5665_offset_compensate(struct rt5665_priv *rt5665)
+{
+	unsigned int reg0005, reg01ef, reg01f0, offset;
+	unsigned int reg0073, reg0094, reg0080;
+
+	regmap_read(rt5665->regmap, RT5665_HPL_GAIN, &reg0005);
+	regmap_write(rt5665->regmap, RT5665_HPL_GAIN, 0x0f00);
+	regmap_read(rt5665->regmap, RT5665_HP_CALIB_STA_6, &reg01ef);
+	regmap_read(rt5665->regmap, RT5665_HP_CALIB_STA_7, &reg01f0);
+	regmap_write(rt5665->regmap, RT5665_HPL_GAIN, reg0005);
+
+	offset = ((reg01ef << 16) | reg01f0) + rt5665->pdata.offset_comp;
+
+	regmap_read(rt5665->regmap, RT5665_GLB_CLK, &reg0080);
+	regmap_read(rt5665->regmap, RT5665_ADDA_CLK_1, &reg0073);
+	regmap_read(rt5665->regmap, RT5665_MICBIAS_2, &reg0094);
+	regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x200, 0x200);
+	regmap_update_bits(rt5665->regmap, RT5665_GLB_CLK, RT5665_SCLK_SRC_MASK,
+		RT5665_SCLK_SRC_RCCLK);
+	regmap_update_bits(rt5665->regmap, RT5665_ADDA_CLK_1,
+		RT5665_I2S_PD1_MASK, RT5665_I2S_PD1_1);
+	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_1, 0x7c10);
+	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_2, 0x0321);
+	regmap_write(rt5665->regmap, RT5665_I2C_MODE, 0x0001);
+
+	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_11,
+		 (offset >> 2) & 0xffff);
+	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_10, 0x1f00);
+
+	regmap_write(rt5665->regmap, RT5665_I2C_MODE, 0x0000);
+	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_2, 0x0320);
+	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_1, 0x7c00);
+	regmap_update_bits(rt5665->regmap, RT5665_ADDA_CLK_1,
+		RT5665_I2S_PD1_MASK, reg0073);
+	regmap_update_bits(rt5665->regmap, RT5665_GLB_CLK, RT5665_SCLK_SRC_MASK,
+		reg0080);
+	regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x200, reg0094);
+}
+
 static void rt5665_recalibrate(struct snd_soc_codec *codec)
 {
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	unsigned int reg063, reg06b, reg13a, reg1db;
 
 	reg063 = snd_soc_read(codec, RT5665_PWR_ANLG_1);
@@ -1057,6 +1097,9 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, RT5665_PWR_ANLG_1,
 			RT5665_PWR_VREF1 | RT5665_PWR_FV1 |
 			RT5665_PWR_VREF2 | RT5665_PWR_FV2, reg063);
+
+	if (rt5665->pdata.offset_comp)
+		rt5665_offset_compensate(rt5665);
 }
 
 static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
@@ -5246,7 +5289,7 @@ static struct snd_soc_codec_driver soc_codec_dev_rt5665 = {
 static const struct regmap_config rt5665_regmap = {
 	.reg_bits = 16,
 	.val_bits = 16,
-	.max_register = 0x0400,
+	.max_register = RT5665_I2C_MODE,
 	.volatile_reg = rt5665_volatile_register,
 	.readable_reg = rt5665_readable_register,
 	.cache_type = REGCACHE_RBTREE,
@@ -5304,6 +5347,9 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 		&rt5665->pdata.sar_pb_vth2);
 	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth3",
 		&rt5665->pdata.sar_pb_vth3);
+
+	of_property_read_u32(dev->of_node, "realtek,offset-comp",
+		&rt5665->pdata.offset_comp);
 
 	if (!of_property_read_u32_array(dev->of_node, "imp_table", data,
 		(len * 4))) {
@@ -5399,6 +5445,9 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 
 		count++;
 	}
+
+	if (rt5665->pdata.offset_comp)
+		rt5665_offset_compensate(rt5665);
 
 	regmap_write(rt5665->regmap, RT5665_RESET, 0);
 	regcache_cache_bypass(rt5665->regmap, false);
