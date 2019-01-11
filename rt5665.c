@@ -1059,12 +1059,13 @@ static void rt5665_offset_compensate(struct rt5665_priv *rt5665)
 static void rt5665_recalibrate(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-	unsigned int reg063, reg06b, reg13a, reg1db;
+	unsigned int reg063, reg06b, reg13a, reg1db, reg080;
 
 	reg063 = snd_soc_read(codec, RT5665_PWR_ANLG_1);
 	reg06b = snd_soc_read(codec, RT5665_CLK_DET);
 	reg13a = snd_soc_read(codec, RT5665_CHOP_DAC);
 	reg1db = snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2);
+	reg080 = snd_soc_read(codec, RT5665_GLB_CLK);
 
 	if (!(snd_soc_read(codec, RT5665_PWR_ANLG_1) &
 		(RT5665_PWR_VREF1 | RT5665_PWR_VREF2))) {
@@ -1076,6 +1077,8 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 			RT5665_PWR_FV2, RT5665_PWR_FV1 | RT5665_PWR_FV2);
 	}
 
+	snd_soc_update_bits(codec, RT5665_GLB_CLK, RT5665_SCLK_SRC_MASK,
+		RT5665_SCLK_SRC_RCCLK);
 	snd_soc_update_bits(codec, RT5665_CLK_DET, 0x8001, 0x8001);
 	snd_soc_update_bits(codec, RT5665_CHOP_DAC, 0x3000, 0x3000);
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x3005);
@@ -1094,6 +1097,8 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x2005);
 	snd_soc_update_bits(codec, RT5665_CHOP_DAC, 0x3000, reg13a);
 	snd_soc_update_bits(codec, RT5665_CLK_DET, 0x8001, reg06b);
+	snd_soc_update_bits(codec, RT5665_GLB_CLK, RT5665_SCLK_SRC_MASK,
+		reg080);
 	snd_soc_update_bits(codec, RT5665_PWR_ANLG_1,
 			RT5665_PWR_VREF1 | RT5665_PWR_FV1 |
 			RT5665_PWR_VREF2 | RT5665_PWR_FV2, reg063);
