@@ -1019,16 +1019,18 @@ static const struct snd_kcontrol_new rt5665_if3_adc_swap_mux =
 
 static void rt5665_offset_compensate(struct rt5665_priv *rt5665)
 {
-	unsigned int reg0005, reg01ef, reg01f0, offset;
-	unsigned int reg0073, reg0094, reg0080;
+	unsigned int reg0005, reg01ef[16], reg01f0[16], offset;
+	unsigned int reg0073, reg0094, reg0080, i;
 
 	regmap_read(rt5665->regmap, RT5665_HPL_GAIN, &reg0005);
-	regmap_write(rt5665->regmap, RT5665_HPL_GAIN, 0x0f00);
-	regmap_read(rt5665->regmap, RT5665_HP_CALIB_STA_6, &reg01ef);
-	regmap_read(rt5665->regmap, RT5665_HP_CALIB_STA_7, &reg01f0);
-	regmap_write(rt5665->regmap, RT5665_HPL_GAIN, reg0005);
 
-	offset = ((reg01ef << 16) | reg01f0) + rt5665->pdata.offset_comp;
+	for (i = 0; i < 16; i++) {
+		regmap_write(rt5665->regmap, RT5665_HPL_GAIN, i << 8);
+		regmap_read(rt5665->regmap, RT5665_HP_CALIB_STA_6, &reg01ef[i]);
+		regmap_read(rt5665->regmap, RT5665_HP_CALIB_STA_7, &reg01f0[i]);
+	}
+
+	regmap_write(rt5665->regmap, RT5665_HPL_GAIN, reg0005);
 
 	regmap_read(rt5665->regmap, RT5665_GLB_CLK, &reg0080);
 	regmap_read(rt5665->regmap, RT5665_ADDA_CLK_1, &reg0073);
@@ -1042,9 +1044,14 @@ static void rt5665_offset_compensate(struct rt5665_priv *rt5665)
 	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_2, 0x0321);
 	regmap_write(rt5665->regmap, RT5665_I2C_MODE, 0x0001);
 
-	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_11,
-		 (offset >> 2) & 0xffff);
-	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_10, 0x1f00);
+	for (i = 0; i < 16; i++) {
+		offset = ((reg01ef[i] << 16) | reg01f0[i]) +
+			rt5665->pdata.offset_comp[i];
+		regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_11,
+			(offset >> 2) & 0xffff);
+		regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_10,
+			0x1000 | (i << 8));
+	}
 
 	regmap_write(rt5665->regmap, RT5665_I2C_MODE, 0x0000);
 	regmap_write(rt5665->regmap, RT5665_HP_CALIB_CTRL_2, 0x0320);
@@ -1103,7 +1110,7 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 			RT5665_PWR_VREF1 | RT5665_PWR_FV1 |
 			RT5665_PWR_VREF2 | RT5665_PWR_FV2, reg063);
 
-	if (rt5665->pdata.offset_comp)
+	if (rt5665->pdata.offset_comp[0])
 		rt5665_offset_compensate(rt5665);
 }
 
@@ -5359,8 +5366,9 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth3",
 		&rt5665->pdata.sar_pb_vth3);
 
-	of_property_read_u32(dev->of_node, "realtek,offset-comp",
-		&rt5665->pdata.offset_comp);
+	of_property_read_u32_array(dev->of_node, "realtek,offset-comp",
+		rt5665->pdata.offset_comp,
+		ARRAY_SIZE(rt5665->pdata.offset_comp));
 
 	if (!of_property_read_u32_array(dev->of_node, "imp_table", data,
 		(len * 4))) {
@@ -5457,7 +5465,7 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 		count++;
 	}
 
-	if (rt5665->pdata.offset_comp)
+	if (rt5665->pdata.offset_comp[0])
 		rt5665_offset_compensate(rt5665);
 
 	regmap_write(rt5665->regmap, RT5665_RESET, 0);
