@@ -3250,15 +3250,16 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-	unsigned int reg080, reg094;
+	unsigned int reg080;
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		reg080 = snd_soc_read(codec, RT5665_GLB_CLK);
-		reg094 = snd_soc_read(codec, RT5665_MICBIAS_2);
 		snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0x200);
 		snd_soc_update_bits(codec, RT5665_GLB_CLK, RT5665_SCLK_SRC_MASK,
 			RT5665_SCLK_SRC_RCCLK);
+
+		usleep_range(3000, 5000);
 
 		snd_soc_update_bits(codec, RT5665_CHOP_DAC,
 			RT5665_CKGEN_DAC1_MASK, RT5665_CKGEN_DAC1_MASK);
@@ -3279,7 +3280,6 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 
 		snd_soc_update_bits(codec, RT5665_GLB_CLK, RT5665_SCLK_SRC_MASK,
 			reg080);
-		snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, reg094);
 
 		snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, 0x0002);
 		break;
@@ -3295,6 +3295,7 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		rt5665_noise_gate(codec, false);
 		snd_soc_update_bits(codec, RT5665_CHOP_DAC,
 			RT5665_CKGEN_DAC1_MASK, 0);
+		snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0);
 		break;
 
 	default:
