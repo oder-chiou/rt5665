@@ -2242,15 +2242,8 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
 			RT5665_PM_HP_HV | RT5665_OSW_L_EN | RT5665_OSW_R_EN);
 		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0x0020);
-
-		snd_soc_update_bits(codec, RT5665_DEPOP_1,
-			RT5665_PWR_PUMP_HP | RT5665_PWR_CAPLESS,
-			RT5665_PWR_PUMP_HP | RT5665_PWR_CAPLESS);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		snd_soc_update_bits(codec, RT5665_DEPOP_1,
-			RT5665_PWR_PUMP_HP | RT5665_PWR_CAPLESS, 0);
-
 		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK, RT5665_PM_HP_LV);
@@ -3897,9 +3890,10 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 	SND_SOC_DAPM_PGA_S("LOUT Amp", 1, RT5665_PWR_ANLG_1,
 		RT5665_PWR_LM_BIT, 0, NULL, 0),
 
-	SND_SOC_DAPM_SUPPLY("Pump HP", SND_SOC_NOPM, 0, 0, NULL, 0),
-	SND_SOC_DAPM_SUPPLY("Capless", SND_SOC_NOPM, 0, 0, rt5665_capless_event,
-		SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY("Pump HP", RT5665_DEPOP_1, RT5665_PWR_PUMP_HP_BIT,
+		0, NULL, 0),
+	SND_SOC_DAPM_SUPPLY("Capless", RT5665_DEPOP_1, RT5665_PWR_CAPLESS_BIT,
+		0, rt5665_capless_event, SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_SUPPLY("Charge Pump", SND_SOC_NOPM, 0, 0,
 		rt5665_charge_pump_event, SND_SOC_DAPM_PRE_PMU |
