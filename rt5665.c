@@ -1321,6 +1321,8 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	reg2a = snd_soc_read(codec, RT5665_STO1_DAC_MIXER);
 	reg1db = snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2);
 
+	snd_soc_update_bits(codec, RT5665_CHOP_DAC, RT5665_CKGEN_DAC1_MASK,
+		RT5665_CKGEN_DAC1_MASK);
 	snd_soc_write(codec, RT5665_HPL_GAIN, 0);
 	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
 		RT5665_L_MUTE | RT5665_R_MUTE, RT5665_L_MUTE | RT5665_R_MUTE);
@@ -1369,6 +1371,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0xb320);
 	/* snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0); */
 	snd_soc_write(codec, RT5665_STO1_ADC_DIG_VOL, reg1c);
+	snd_soc_update_bits(codec, RT5665_CHOP_DAC, RT5665_CKGEN_DAC1_MASK, 0);
 
 	mutex_unlock(&codec->component.card->dapm_mutex);
 
