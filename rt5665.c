@@ -1066,11 +1066,10 @@ static void rt5665_offset_compensate(struct rt5665_priv *rt5665)
 static void rt5665_recalibrate(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-	unsigned int reg063, reg06b, reg13a, reg1db, reg080;
+	unsigned int reg063, reg06b, reg1db, reg080;
 
 	reg063 = snd_soc_read(codec, RT5665_PWR_ANLG_1);
 	reg06b = snd_soc_read(codec, RT5665_CLK_DET);
-	reg13a = snd_soc_read(codec, RT5665_CHOP_DAC);
 	reg1db = snd_soc_read(codec, RT5665_HP_LOGIC_CTRL_2);
 	reg080 = snd_soc_read(codec, RT5665_GLB_CLK);
 
@@ -1102,7 +1101,6 @@ static void rt5665_recalibrate(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_HP_LOGIC_CTRL_2, reg1db);
 	snd_soc_write(codec, RT5665_HP_CALIB_CTRL_2, 0x0320);
 	snd_soc_write(codec, RT5665_CALIB_ADC_CTRL, 0x2005);
-	snd_soc_update_bits(codec, RT5665_CHOP_DAC, 0x3000, reg13a);
 	snd_soc_update_bits(codec, RT5665_CLK_DET, 0x8001, reg06b);
 	snd_soc_update_bits(codec, RT5665_GLB_CLK, RT5665_SCLK_SRC_MASK,
 		reg080);
@@ -1323,6 +1321,9 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 
 	snd_soc_update_bits(codec, RT5665_CHOP_DAC, RT5665_CKGEN_DAC1_MASK,
 		RT5665_CKGEN_DAC1_MASK);
+
+	usleep_range(3000, 5000);
+
 	snd_soc_write(codec, RT5665_HPL_GAIN, 0);
 	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
 		RT5665_L_MUTE | RT5665_R_MUTE, RT5665_L_MUTE | RT5665_R_MUTE);
@@ -2207,6 +2208,9 @@ static int rt5665_capless_event(struct snd_soc_dapm_widget *w,
 		if (time_after(jiffies, timeout))
 			rt5665_recalibrate(codec);
 		timeout = jiffies + (HZ * 60);
+		snd_soc_update_bits(codec, RT5665_CHOP_DAC,
+			RT5665_CKGEN_DAC1_MASK, 0);
+		snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0);
 		break;
 
 	default:
@@ -3296,9 +3300,6 @@ static int rt5665_hp_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
 			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
 		rt5665_noise_gate(codec, false);
-		snd_soc_update_bits(codec, RT5665_CHOP_DAC,
-			RT5665_CKGEN_DAC1_MASK, 0);
-		snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0);
 		break;
 
 	default:
