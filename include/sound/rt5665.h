@@ -52,6 +52,7 @@ struct rt5665_platform_data {
 	unsigned int sar_pb_vth3;
 
 	unsigned int offset_comp[16];
+	unsigned int offset_comp_r[16];
 };
 
 #endif
