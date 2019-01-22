@@ -46,6 +46,7 @@ struct rt5665_platform_data {
 	enum rt5665_jd_src jd_src;
 
 	unsigned int sar_hs_type;
+	unsigned int sar_hs_open_gender;
 	unsigned int sar_pb_vth0;
 	unsigned int sar_pb_vth1;
 	unsigned int sar_pb_vth2;

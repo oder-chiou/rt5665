@@ -40,6 +40,9 @@
 #include "rl6231.h"
 #include "rt5665.h"
 
+bool rt5665_is_open_gender;
+EXPORT_SYMBOL_GPL(rt5665_is_open_gender);
+
 static unsigned int sar_adc_value;
 
 #ifdef CONFIG_SWITCH
@@ -1556,6 +1559,13 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			rt5665->pdata.sar_hs_type : 729;
 
 		dev_dbg(codec->dev, "sar_adc_value = %d\n", sar_adc_value);
+
+		if (rt5665->pdata.sar_hs_open_gender) {
+			if (sar_adc_value > rt5665->pdata.sar_hs_open_gender)
+				rt5665_is_open_gender = true;
+			else
+				rt5665_is_open_gender = false;
+		}
 
 		if (sar_adc_value > sar_hs_type) {
 			rt5665->jack_type = SND_JACK_HEADSET;
@@ -5385,6 +5395,8 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 
 	of_property_read_u32(dev->of_node, "realtek,sar-hs-type",
 		&rt5665->pdata.sar_hs_type);
+	of_property_read_u32(dev->of_node, "realtek,sar-hs-open-gender",
+		&rt5665->pdata.sar_hs_open_gender);
 	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth0",
 		&rt5665->pdata.sar_pb_vth0);
 	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth1",
