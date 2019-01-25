@@ -1317,7 +1317,7 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
-	unsigned int reg1c, reg2a, reg1db, reg29;
+	unsigned int reg1c, reg2a, reg1db, reg29, reg05, reg13a;
 	int i, mask;
 
 	snd_soc_dapm_force_enable_pin(dapm, "Vref1");
@@ -1331,6 +1331,8 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 
 	mutex_lock(&codec->component.card->dapm_mutex);
 
+	reg05 = snd_soc_read(codec, RT5665_HPL_GAIN);
+	reg13a = snd_soc_read(codec, RT5665_CHOP_DAC);
 	reg1c = snd_soc_read(codec, RT5665_STO1_ADC_DIG_VOL);
 	reg29 = snd_soc_read(codec, RT5665_AD_DA_MIXER);
 	reg2a = snd_soc_read(codec, RT5665_STO1_DAC_MIXER);
@@ -1392,7 +1394,9 @@ static unsigned int rt5665_imp_detect(struct snd_soc_codec *codec)
 	snd_soc_write(codec, RT5665_ADC_STO2_HP_CTRL_1, 0xb320);
 	/* snd_soc_update_bits(codec, RT5665_MICBIAS_2, 0x200, 0); */
 	snd_soc_write(codec, RT5665_STO1_ADC_DIG_VOL, reg1c);
-	snd_soc_update_bits(codec, RT5665_CHOP_DAC, RT5665_CKGEN_DAC1_MASK, 0);
+	snd_soc_update_bits(codec, RT5665_CHOP_DAC, RT5665_CKGEN_DAC1_MASK,
+		reg13a);
+	snd_soc_write(codec, RT5665_HPL_GAIN, reg05);
 
 	mutex_unlock(&codec->component.card->dapm_mutex);
 
@@ -1475,7 +1479,9 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 {
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
-	unsigned int sar_hs_type, val, mask;
+	unsigned int sar_hs_type, val, mask, reg094;
+
+	regmap_read(rt5665->regmap, RT5665_MICBIAS_2, &reg094);
 
 	if (jack_insert) {
 		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
@@ -1506,7 +1512,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 			regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST,
 				0x8000, 0);
 			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
-				0x200, 0);
+				0x200, reg094);
 
 			return 0;
 		}
@@ -1527,7 +1533,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 					regmap_update_bits(rt5665->regmap,
 						RT5665_VOL_TEST, 0x8000, 0);
 					regmap_update_bits(rt5665->regmap,
-						RT5665_MICBIAS_2, 0x200, 0);
+						RT5665_MICBIAS_2, 0x200, reg094);
 
 					return 0;
 				}
@@ -1535,7 +1541,8 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		}
 
 		regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST, 0x8000, 0);
-		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x200, 0);
+		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x200,
+			reg094);
 
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1, 0x180,
 			0x180);
@@ -1718,6 +1725,9 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
 	struct snd_soc_codec *codec = rt5665->codec;
 	int val, btn_type, mask;
+	unsigned int reg094;
+
+	reg094 = snd_soc_read(codec, RT5665_MICBIAS_2);
 
 	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
 		mask = 0x1010;
@@ -1805,7 +1815,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 			regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST,
 				0x8000, 0);
 			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
-				0x200, 0);
+				0x200, reg094);
 
 			dev_dbg(codec->dev, "jack_type = 0x%04x\n",
 				rt5665->jack_type);
