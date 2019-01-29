@@ -2024,6 +2024,7 @@ struct rt5665_priv {
 	unsigned int magic;
 	bool do_rek;
 	bool disable_ng2;
+	bool is_suspend;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;

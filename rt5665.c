@@ -1727,6 +1727,11 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	int val, btn_type, mask;
 	unsigned int reg094;
 
+	if (rt5665->is_suspend) {
+		/* Because some SOCs need wake up time of I2C controller */
+		msleep(50);
+	}
+
 	reg094 = snd_soc_read(codec, RT5665_MICBIAS_2);
 
 	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
@@ -5223,11 +5228,19 @@ static int rt5665_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5665_suspend(struct snd_soc_codec *codec)
 {
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	rt5665->is_suspend = true;
+
 	return 0;
 }
 
 static int rt5665_resume(struct snd_soc_codec *codec)
 {
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	rt5665->is_suspend = false;
+
 	return 0;
 }
 #else
