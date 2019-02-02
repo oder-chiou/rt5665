@@ -40,9 +40,6 @@
 #include "rl6231.h"
 #include "rt5665.h"
 
-bool rt5665_is_open_gender;
-EXPORT_SYMBOL_GPL(rt5665_is_open_gender);
-
 static unsigned int sar_adc_value;
 
 #ifdef CONFIG_SWITCH
@@ -1572,10 +1569,15 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		dev_dbg(codec->dev, "sar_adc_value = %d\n", sar_adc_value);
 
 		if (rt5665->pdata.sar_hs_open_gender) {
-			if (sar_adc_value > rt5665->pdata.sar_hs_open_gender)
-				rt5665_is_open_gender = true;
-			else
-				rt5665_is_open_gender = false;
+			if (sar_adc_value > rt5665->pdata.sar_hs_open_gender) {
+				rt5665->jack_type = 0;
+				regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1,
+					0x2291);
+				regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
+					0x100, 0);
+				dev_dbg(codec->dev, "jack_type = open gender\n");
+				return rt5665->jack_type;
+			}
 		}
 
 		if (sar_adc_value > sar_hs_type) {
@@ -1611,14 +1613,133 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 	return rt5665->jack_type;
 }
 
+static int rt5665_headset_detect_open_gender(struct snd_soc_codec *codec, int jack_insert)
+{
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+	struct snd_soc_dapm_context *dapm = snd_soc_codec_get_dapm(codec);
+	unsigned int sar_hs_type, val, reg094;
+
+	regmap_read(rt5665->regmap, RT5665_MICBIAS_2, &reg094);
+
+	if (jack_insert) {
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
+			0);
+		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x300,
+			0x300);
+		regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST, 0x8000,
+			0x8000);
+
+		msleep(20);
+		regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
+		if (val & 0x4) {
+			snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
+			snd_soc_dapm_sync(dapm);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
+				0xc000, 0x4000);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+				0x180, 0);
+		}
+
+		if (rt5665->magic)
+			rt5665_imp_detect(codec);
+
+		if (val & 0x4) {
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
+				0xc000, 0);
+
+			msleep(20);
+			regmap_read(rt5665->regmap, RT5665_GPIO_STA, &val);
+			while (val & 0x4) {
+				msleep(20);
+				regmap_read(rt5665->regmap, RT5665_GPIO_STA,
+					&val);
+			}
+		}
+
+		regmap_update_bits(rt5665->regmap, RT5665_VOL_TEST, 0x8000, 0);
+		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x200,
+			reg094);
+
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1, 0x180,
+			0x180);
+
+		snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
+		snd_soc_dapm_disable_pin(dapm, "Vref1");
+		snd_soc_dapm_disable_pin(dapm, "Vref2");
+		snd_soc_dapm_disable_pin(dapm, "ADC Stereo2 Filter");
+		snd_soc_dapm_disable_pin(dapm, "DAC Stereo1 Filter");
+		snd_soc_dapm_disable_pin(dapm, "DAC 1 Clock");
+		snd_soc_dapm_disable_pin(dapm, "CLKDET SYS");
+		snd_soc_dapm_disable_pin(dapm, "CLKDET HP");
+		snd_soc_dapm_sync(dapm);
+
+		regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa297);
+
+		msleep(20);
+
+		sar_adc_value = snd_soc_read(rt5665->codec,
+			RT5665_SAR_IL_CMD_4) & 0x7ff;
+		rt5665->adc_val = sar_adc_value;
+
+		sar_hs_type = rt5665->pdata.sar_hs_type ?
+			rt5665->pdata.sar_hs_type : 729;
+
+		dev_dbg(codec->dev, "(open gender) sar_adc_value = %d\n", sar_adc_value);
+
+		if (sar_adc_value > sar_hs_type) {
+			rt5665->jack_type = SND_JACK_HEADSET;
+			rt5665_enable_push_button_irq(codec, true);
+		} else {
+			rt5665->jack_type = SND_JACK_HEADPHONE;
+			regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1,
+				0x2291);
+			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
+				0x100, 0);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1,
+				0x80, 0);
+			regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4,
+				0xc000, 0x4000);
+		}
+	} else {
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1, 0x80, 0);
+		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
+			0x4000);
+		regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
+		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100, 0);
+		if (rt5665->jack_type == SND_JACK_HEADSET)
+			rt5665_enable_push_button_irq(codec, false);
+		rt5665->jack_type = 0;
+		sar_adc_value = 0;
+		rt5665->adc_val = sar_adc_value;
+	}
+
+	dev_dbg(codec->dev, "(open gender) jack_type = %d\n", rt5665->jack_type);
+	return rt5665->jack_type;
+}
+
 static irqreturn_t rt5665_irq(int irq, void *data)
 {
 	struct rt5665_priv *rt5665 = data;
 
+	pr_debug("%s\n", __func__);
 	wake_lock_timeout(&rt5665->jack_detect_wake_lock, 3 * HZ);
 	cancel_delayed_work_sync(&rt5665->jack_detect_work);
 	queue_delayed_work(system_wq, &rt5665->jack_detect_work,
 		msecs_to_jiffies(rt5665->irq_work_delay_time));
+
+	return IRQ_HANDLED;
+}
+
+static irqreturn_t rt5665_open_gender_irq(int irq, void *data)
+{
+	struct rt5665_priv *rt5665 = data;
+
+	pr_debug("%s\n", __func__);
+	wake_lock_timeout(&rt5665->jack_detect_wake_lock, 3 * HZ);
+	cancel_delayed_work_sync(&rt5665->jack_detect_open_gender_work);
+	queue_delayed_work(system_wq, &rt5665->jack_detect_open_gender_work,
+		msecs_to_jiffies(500));
 
 	return IRQ_HANDLED;
 }
@@ -1734,6 +1855,8 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 
 	reg094 = snd_soc_read(codec, RT5665_MICBIAS_2);
 
+	mutex_lock(&rt5665->open_gender_mutex);
+
 	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
 		mask = 0x1010;
 	else
@@ -1749,8 +1872,10 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 			if (rt5665->jack_type == SND_JACK_HEADSET)
 				switch_set_state(&rt5665_headset_switch, 1);
-			else
+			else if (rt5665->jack_type == SND_JACK_HEADPHONE)
 				switch_set_state(&rt5665_headset_switch, 2);
+			else
+				switch_set_state(&rt5665_headset_switch, 0); /* open gender */
 #endif
 			rt5665->irq_work_delay_time = 0;
 		} else {
@@ -1846,6 +1971,60 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 		else
 			cancel_delayed_work_sync(&rt5665->jd_check_work);
 	}
+
+	mutex_unlock(&rt5665->open_gender_mutex);
+}
+
+static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv,
+		jack_detect_open_gender_work.work);
+	struct snd_soc_codec *codec = rt5665->codec;
+	int val, mask;
+
+	mutex_lock(&rt5665->open_gender_mutex);
+
+	pr_debug("%s\n", __func__);
+
+	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
+		mask = 0x1010;
+	else
+		mask = 0x0010;
+
+	if (!(snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask)) {
+		dev_dbg(codec->dev, "JD\n");
+
+		val = !gpio_get_value(rt5665->pdata.ext_ant_det_gpio);
+		if (val) {
+			dev_dbg(codec->dev, "(open gender) jack in\n");
+			rt5665->jack_type = rt5665_headset_detect_open_gender(
+						rt5665->codec, 1);
+#ifdef CONFIG_SWITCH
+			if (rt5665->jack_type == SND_JACK_HEADSET)
+				switch_set_state(&rt5665_headset_switch, 1);
+			else if (rt5665->jack_type == SND_JACK_HEADPHONE)
+				switch_set_state(&rt5665_headset_switch, 2);
+#endif
+			rt5665->irq_work_delay_time = 0;
+		} else {
+			dev_dbg(codec->dev, "(open gender) jack out\n");
+			rt5665->jack_type = rt5665_headset_detect_open_gender(
+						rt5665->codec, 0);
+#ifdef CONFIG_SWITCH
+			switch_set_state(&rt5665_headset_switch, 0);
+#endif
+			rt5665->irq_work_delay_time = 50;
+		}
+	}
+
+	dev_dbg(codec->dev, "(open gender) jack_type = 0x%04x\n",
+		rt5665->jack_type);
+
+	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
+		SND_JACK_HEADSET);
+
+	mutex_unlock(&rt5665->open_gender_mutex);
 }
 
 static const char * const rt5665_jack_type_mode[] = {
@@ -5433,6 +5612,9 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	of_property_read_u32(dev->of_node, "realtek,sar-pb-vth3",
 		&rt5665->pdata.sar_pb_vth3);
 
+	rt5665->pdata.ext_ant_det_gpio = of_get_named_gpio(dev->of_node,
+		"realtek,ext-ant-det-gpio", 0);
+
 	of_property_read_u32_array(dev->of_node, "realtek,offset-comp",
 		rt5665->pdata.offset_comp,
 		ARRAY_SIZE(rt5665->pdata.offset_comp));
@@ -5565,6 +5747,22 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 			dev_err(codec->dev, "Failed to reguest IRQ: %d\n", ret);
 
 		ret = irq_set_irq_wake(rt5665->irq, 1);
+		if (ret)
+			dev_err(codec->dev, "Failed to reguest IRQ wake: %d\n",
+				ret);
+	}
+
+	if (rt5665->pdata.sar_hs_open_gender) {
+		ret = request_threaded_irq(
+			gpio_to_irq(rt5665->pdata.ext_ant_det_gpio), NULL,
+			rt5665_open_gender_irq, IRQF_TRIGGER_RISING |
+				IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+				"rt5665-open-gender", rt5665);
+		if (ret)
+			dev_err(codec->dev, "Failed to reguest IRQ: %d\n", ret);
+
+		ret = irq_set_irq_wake(
+			gpio_to_irq(rt5665->pdata.ext_ant_det_gpio), 1);
 		if (ret)
 			dev_err(codec->dev, "Failed to reguest IRQ wake: %d\n",
 				ret);
@@ -5791,6 +5989,8 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 	INIT_DELAYED_WORK(&rt5665->jack_detect_work,
 		rt5665_jack_detect_handler);
+	INIT_DELAYED_WORK(&rt5665->jack_detect_open_gender_work,
+		rt5665_jack_detect_open_gender_handler);
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
 	INIT_DELAYED_WORK(&rt5665->jd_check_work, rt5665_jd_check_handler);
 	INIT_DELAYED_WORK(&rt5665->ng_check_work, rt5665_ng_check_handler);
@@ -5808,6 +6008,8 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	ret = misc_register(&rt5665_mic_adc_dev);
 	if (ret)
 		dev_err(&i2c->dev, "Couldn't register control device\n");
+
+	mutex_init(&rt5665->open_gender_mutex);
 
 	return snd_soc_register_codec(&i2c->dev, &soc_codec_dev_rt5665,
 			rt5665_dai, ARRAY_SIZE(rt5665_dai));

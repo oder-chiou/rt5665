@@ -54,6 +54,8 @@ struct rt5665_platform_data {
 
 	unsigned int offset_comp[16];
 	unsigned int offset_comp_r[16];
+
+	int ext_ant_det_gpio;
 };
 
 #endif
