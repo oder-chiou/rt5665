@@ -1845,7 +1845,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
 	struct snd_soc_codec *codec = rt5665->codec;
-	int val, btn_type, mask;
+	int val, btn_type, mask, ret;
 	unsigned int reg094;
 
 	if (rt5665->is_suspend) {
@@ -1862,8 +1862,14 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	else
 		mask = 0x0010;
 
-	val = snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask;
-	if (!val) {
+	ret = regmap_read(rt5665->regmap, RT5665_AJD1_CTRL, &val);
+	if (ret < 0) {
+		dev_err(codec->dev, "i2c error ret = %d\n", ret);
+		mutex_unlock(&rt5665->open_gender_mutex);
+		return;
+	}
+
+	if (!(val & mask)) {
 		/* jack in */
 		if (rt5665->jack_type == 0) {
 			/* jack was out, report jack type */
@@ -1981,7 +1987,7 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 		container_of(work, struct rt5665_priv,
 		jack_detect_open_gender_work.work);
 	struct snd_soc_codec *codec = rt5665->codec;
-	int val, mask;
+	int val, mask, ret;
 
 	mutex_lock(&rt5665->open_gender_mutex);
 
@@ -1992,7 +1998,14 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 	else
 		mask = 0x0010;
 
-	if (!(snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask)) {
+	ret = regmap_read(rt5665->regmap, RT5665_AJD1_CTRL, &val);
+	if (ret < 0) {
+		dev_err(codec->dev, "i2c error ret = %d\n", ret);
+		mutex_unlock(&rt5665->open_gender_mutex);
+		return;
+	}
+
+	if (!(val & mask)) {
 		dev_dbg(codec->dev, "JD\n");
 
 		val = !gpio_get_value(rt5665->pdata.ext_ant_det_gpio);
