@@ -2027,6 +2027,8 @@ struct rt5665_priv {
 	bool do_rek;
 	bool disable_ng2;
 	bool is_suspend;
+	unsigned long rek_timeout;
+	bool rek;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;
