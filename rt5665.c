@@ -5426,20 +5426,11 @@ static int rt5665_remove(struct snd_soc_codec *codec)
 #ifdef CONFIG_PM
 static int rt5665_suspend(struct snd_soc_codec *codec)
 {
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-
-	rt5665->is_suspend = true;
-
 	return 0;
 }
 
 static int rt5665_resume(struct snd_soc_codec *codec)
 {
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-
-	rt5665->is_suspend = false;
-	rt5665->rek = true;
-
 	return 0;
 }
 #else
@@ -6079,12 +6070,36 @@ static struct acpi_device_id rt5665_acpi_match[] = {
 MODULE_DEVICE_TABLE(acpi, rt5665_acpi_match);
 #endif
 
+static int rt5665_pm_suspend(struct device *dev)
+{
+	struct rt5665_priv *rt5665 = dev_get_drvdata(dev);
+
+	rt5665->is_suspend = true;
+
+	return 0;
+}
+
+static int rt5665_pm_resume(struct device *dev)
+{
+	struct rt5665_priv *rt5665 = dev_get_drvdata(dev);
+
+	rt5665->is_suspend = false;
+	rt5665->rek = true;
+
+	return 0;
+}
+
+static const struct dev_pm_ops rt5665_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(rt5665_pm_suspend, rt5665_pm_resume)
+};
+
 struct i2c_driver rt5665_i2c_driver = {
 	.driver = {
 		.name = "rt5665",
 		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(rt5665_of_match),
 		.acpi_match_table = ACPI_PTR(rt5665_acpi_match),
+		.pm = &rt5665_pm_ops,
 	},
 	.probe = rt5665_i2c_probe,
 	.remove = rt5665_i2c_remove,
