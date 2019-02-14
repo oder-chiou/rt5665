@@ -1850,6 +1850,8 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	int val, btn_type, mask, ret;
 	unsigned int reg094;
 
+	wake_lock(&rt5665->jack_detect_wake_lock);
+
 	pr_debug("%s\n", __func__);
 
 	if (rt5665->is_suspend) {
@@ -1870,6 +1872,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	if (ret < 0) {
 		dev_err(codec->dev, "i2c error ret = %d\n", ret);
 		mutex_unlock(&rt5665->open_gender_mutex);
+		wake_lock_timeout(&rt5665->jack_detect_wake_lock, HZ);
 		return;
 	}
 
@@ -1983,6 +1986,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	}
 
 	mutex_unlock(&rt5665->open_gender_mutex);
+	wake_lock_timeout(&rt5665->jack_detect_wake_lock, HZ);
 }
 
 static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
@@ -1992,6 +1996,8 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 		jack_detect_open_gender_work.work);
 	struct snd_soc_codec *codec = rt5665->codec;
 	int val, mask, ret;
+
+	wake_lock(&rt5665->jack_detect_wake_lock);
 
 	mutex_lock(&rt5665->open_gender_mutex);
 
@@ -2006,6 +2012,7 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 	if (ret < 0) {
 		dev_err(codec->dev, "i2c error ret = %d\n", ret);
 		mutex_unlock(&rt5665->open_gender_mutex);
+		wake_lock_timeout(&rt5665->jack_detect_wake_lock, HZ);
 		return;
 	}
 
@@ -2042,6 +2049,7 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 		SND_JACK_HEADSET);
 
 	mutex_unlock(&rt5665->open_gender_mutex);
+	wake_lock_timeout(&rt5665->jack_detect_wake_lock, HZ);
 }
 
 static const char * const rt5665_jack_type_mode[] = {
