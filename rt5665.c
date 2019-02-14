@@ -1850,6 +1850,8 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	int val, btn_type, mask, ret;
 	unsigned int reg094;
 
+	pr_debug("%s\n", __func__);
+
 	if (rt5665->is_suspend) {
 		/* Because some SOCs need wake up time of I2C controller */
 		msleep(50);
@@ -6074,6 +6076,8 @@ static int rt5665_pm_suspend(struct device *dev)
 {
 	struct rt5665_priv *rt5665 = dev_get_drvdata(dev);
 
+	pr_debug("%s\n", __func__);
+
 	rt5665->is_suspend = true;
 
 	return 0;
@@ -6082,6 +6086,8 @@ static int rt5665_pm_suspend(struct device *dev)
 static int rt5665_pm_resume(struct device *dev)
 {
 	struct rt5665_priv *rt5665 = dev_get_drvdata(dev);
+
+	pr_debug("%s\n", __func__);
 
 	rt5665->is_suspend = false;
 	rt5665->rek = true;
