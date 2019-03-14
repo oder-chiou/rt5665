@@ -1847,7 +1847,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
 	struct snd_soc_codec *codec = rt5665->codec;
-	int val, btn_type, mask, ret;
+	int val, btn_type, mask, ret, count = 0;
 	unsigned int reg094;
 
 	wake_lock(&rt5665->jack_detect_wake_lock);
@@ -1907,6 +1907,14 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 					msleep(20);
 					regmap_read(rt5665->regmap,
 						RT5665_GPIO_STA, &val);
+
+					if (snd_soc_read(rt5665->codec,
+						RT5665_AJD1_CTRL) & mask)
+						break;
+
+					if (count > 50)
+						break;
+					count++;
 				} while (val & 0x4);
 
 				regmap_update_bits(rt5665->regmap,
