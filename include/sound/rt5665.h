@@ -52,6 +52,9 @@ struct rt5665_platform_data {
 	unsigned int sar_pb_vth2;
 	unsigned int sar_pb_vth3;
 
+	unsigned int delay_plug_in;
+	unsigned int delay_plug_out_pb;
+
 	unsigned int offset_comp[16];
 	unsigned int offset_comp_r[16];
 

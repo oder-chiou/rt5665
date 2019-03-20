@@ -1890,7 +1890,11 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 			else
 				switch_set_state(&rt5665_headset_switch, 0); /* open gender */
 #endif
-			rt5665->irq_work_delay_time = 0;
+			if (rt5665->pdata.delay_plug_out_pb)
+				rt5665->irq_work_delay_time =
+					rt5665->pdata.delay_plug_out_pb;
+			else
+				rt5665->irq_work_delay_time = 0;
 		} else {
 			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
 				0x200, 0x200);
@@ -1977,7 +1981,11 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 		switch_set_state(&rt5665_headset_switch, 0);
 #endif
-		rt5665->irq_work_delay_time = 50;
+		if (rt5665->pdata.delay_plug_in) 
+			rt5665->irq_work_delay_time =
+				rt5665->pdata.delay_plug_in;
+		else
+			rt5665->irq_work_delay_time = 50;
 	}
 
 	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
@@ -2038,7 +2046,11 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 			else if (rt5665->jack_type == SND_JACK_HEADPHONE)
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
-			rt5665->irq_work_delay_time = 0;
+			if (rt5665->pdata.delay_plug_out_pb) 
+				rt5665->irq_work_delay_time =
+					rt5665->pdata.delay_plug_out_pb;
+			else
+				rt5665->irq_work_delay_time = 0;
 		} else {
 			dev_dbg(codec->dev, "(open gender) jack out\n");
 			rt5665->jack_type = rt5665_headset_detect_open_gender(
@@ -2046,7 +2058,11 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 			switch_set_state(&rt5665_headset_switch, 0);
 #endif
-			rt5665->irq_work_delay_time = 50;
+			if (rt5665->pdata.delay_plug_in)
+				rt5665->irq_work_delay_time =
+					rt5665->pdata.delay_plug_in;
+			else
+				rt5665->irq_work_delay_time = 50;
 		}
 	}
 
@@ -5651,6 +5667,14 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	of_property_read_u32_array(dev->of_node, "realtek,offset-comp-r",
 		rt5665->pdata.offset_comp_r,
 		ARRAY_SIZE(rt5665->pdata.offset_comp_r));
+
+	/* This is for next IRQ event (Plug-in)of delay */
+	of_property_read_u32(dev->of_node, "realtek,delay-plug-in",
+		&rt5665->pdata.delay_plug_in);
+
+	/* This is for next IRQ event (Plug-out)of delay */
+	of_property_read_u32(dev->of_node, "realtek,delay-plug-out-pb",
+		&rt5665->pdata.delay_plug_out_pb); 
 
 	if (!of_property_read_u32_array(dev->of_node, "imp_table", data,
 		(len * 4))) {
