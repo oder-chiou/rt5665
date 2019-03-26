@@ -5927,8 +5927,32 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	regmap_read(rt5665->regmap, RT5665_DEVICE_ID, &val);
 	if (val != RT5665_6_8_DEVICE_ID) {
 		dev_err(&i2c->dev,
-			"Device with ID register %x is not rt5665\n", val);
-		return -ENODEV;
+			"Device with ID register %x is not rt5665, power toggle\n", val);
+
+		if (regulator_disable(regulator_1v8))
+			dev_err(&i2c->dev, "Fail to disable regulator_1v8\n");
+
+		if (regulator_disable(regulator_3v3))
+			dev_err(&i2c->dev, "Fail to disable regulator_3v3\n");
+
+		/* Sleep for 300 ms miniumum */
+		usleep_range(300000, 350000);
+
+		if (regulator_enable(regulator_1v8))
+			dev_err(&i2c->dev, "Fail to enable regulator_1v8\n");
+
+		if (regulator_enable(regulator_3v3))
+			dev_err(&i2c->dev, "Fail to enable regulator_3v3\n");
+
+		/* Sleep for 300 ms miniumum */
+		usleep_range(300000, 350000);
+
+		regmap_read(rt5665->regmap, RT5665_DEVICE_ID, &val);
+		if (val != RT5665_6_8_DEVICE_ID) {
+			dev_err(&i2c->dev,
+				"Device with ID register %x is not rt5665\n", val);
+			return -ENODEV;
+		}
 	}
 
 	regmap_read(rt5665->regmap, RT5665_MAGIC, &rt5665->magic);
