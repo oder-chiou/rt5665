@@ -1981,7 +1981,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 		switch_set_state(&rt5665_headset_switch, 0);
 #endif
-		if (rt5665->pdata.delay_plug_in) 
+		if (rt5665->pdata.delay_plug_in)
 			rt5665->irq_work_delay_time =
 				rt5665->pdata.delay_plug_in;
 		else
@@ -2046,7 +2046,7 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 			else if (rt5665->jack_type == SND_JACK_HEADPHONE)
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
-			if (rt5665->pdata.delay_plug_out_pb) 
+			if (rt5665->pdata.delay_plug_out_pb)
 				rt5665->irq_work_delay_time =
 					rt5665->pdata.delay_plug_out_pb;
 			else
@@ -5674,7 +5674,7 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 
 	/* This is for next IRQ event (Plug-out)of delay */
 	of_property_read_u32(dev->of_node, "realtek,delay-plug-out-pb",
-		&rt5665->pdata.delay_plug_out_pb); 
+		&rt5665->pdata.delay_plug_out_pb);
 
 	if (!of_property_read_u32_array(dev->of_node, "imp_table", data,
 		(len * 4))) {
