@@ -35,10 +35,6 @@ struct rt5665_platform_data {
 	bool in3_diff;
 	bool in4_diff;
 
-	const char *regulator_1v8;
-	const char *regulator_3v3;
-	const char *regulator_5v;
-
 	int ldo1_en; /* GPIO for LDO1_EN */
 
 	enum rt5665_dmic1_data_pin dmic1_data_pin;

@@ -5634,13 +5634,6 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	of_property_read_u32(dev->of_node, "realtek,jd-src",
 		&rt5665->pdata.jd_src);
 
-	of_property_read_string(dev->of_node, "realtek,regulator_1v8",
-		&rt5665->pdata.regulator_1v8);
-	of_property_read_string(dev->of_node, "realtek,regulator_3v3",
-		&rt5665->pdata.regulator_3v3);
-	of_property_read_string(dev->of_node, "realtek,regulator_5v",
-		&rt5665->pdata.regulator_5v);
-
 	rt5665->pdata.ldo1_en = of_get_named_gpio(dev->of_node,
 		"realtek,ldo1_en", 0);
 
@@ -5870,7 +5863,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 {
 	struct rt5665_platform_data *pdata = dev_get_platdata(&i2c->dev);
 	struct rt5665_priv *rt5665;
-	struct regulator *regulator_1v8, *regulator_3v3, *regulator_5v;
+	struct regulator *regulator_1v8, *regulator_3v3;
 	int ret;
 	unsigned int val;
 
@@ -5887,23 +5880,17 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	else
 		rt5665_parse_dt(rt5665, &i2c->dev);
 
-	regulator_1v8 = regulator_get(NULL, rt5665->pdata.regulator_1v8);
+	regulator_1v8 = devm_regulator_get(&i2c->dev, "regulator_1v8");
 	if (IS_ERR(regulator_1v8))
 		dev_err(&i2c->dev, "Fail to get regulator_1v8\n");
 	else if (regulator_enable(regulator_1v8))
 		dev_err(&i2c->dev, "Fail to enable regulator_1v8\n");
 
-	regulator_3v3 = regulator_get(NULL, rt5665->pdata.regulator_3v3);
+	regulator_3v3 = devm_regulator_get(&i2c->dev, "regulator_3v3");
 	if (IS_ERR(regulator_3v3))
 		dev_err(&i2c->dev, "Fail to get regulator_3v3\n");
 	else if (regulator_enable(regulator_3v3))
 		dev_err(&i2c->dev, "Fail to enable regulator_3v3\n");
-
-	regulator_5v = regulator_get(NULL, rt5665->pdata.regulator_5v);
-	if (IS_ERR(regulator_5v))
-		dev_err(&i2c->dev, "Fail to get regulator_5v\n");
-	else if (regulator_enable(regulator_5v))
-		dev_err(&i2c->dev, "Fail to enable regulator_5v\n");
 
 	if (gpio_is_valid(rt5665->pdata.ldo1_en)) {
 		if (devm_gpio_request(&i2c->dev, rt5665->pdata.ldo1_en,
