@@ -2000,6 +2000,9 @@ struct rt5665_priv {
 	struct delayed_work calibrate_work;
 	struct delayed_work jd_check_work;
 	struct delayed_work ng_check_work;
+	struct delayed_work sto1_l_adc_work, sto1_r_adc_work;
+	struct delayed_work mono_l_adc_work, mono_r_adc_work;
+	struct delayed_work sto2_l_adc_work, sto2_r_adc_work;
 	struct wake_lock jack_detect_wake_lock;
 	struct mutex open_gender_mutex;
 

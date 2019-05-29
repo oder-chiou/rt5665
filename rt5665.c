@@ -468,6 +468,9 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_SAR_IL_CMD_9,		0xa0c0},
 	{RT5665_CHARGE_PUMP_1,		0x0730},
 	{RT5665_JD1_THD,		0x0dcd},
+	{RT5665_STO1_ADC_DIG_VOL,	0xafaf},
+	{RT5665_MONO_ADC_DIG_VOL,	0xafaf},
+	{RT5665_STO2_ADC_DIG_VOL,	0xafaf},
 };
 
 static int rt5665_reg_init(struct rt5665_priv *rt5665)
@@ -1792,6 +1795,67 @@ static void rt5665_ng_check_handler(struct work_struct *work)
 	}
 
 	schedule_delayed_work(&rt5665->ng_check_work, 50);
+}
+
+static void rt5665_sto1_l_adc_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, sto1_l_adc_work.work);
+	struct snd_soc_codec *codec = rt5665->codec;
+
+	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
+		RT5665_L_MUTE, 0);
+}
+
+static void rt5665_sto1_r_adc_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, sto1_r_adc_work.work);
+
+	struct snd_soc_codec *codec = rt5665->codec;
+
+	snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
+		RT5665_R_MUTE, 0);
+}
+
+static void rt5665_mono_l_adc_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, mono_l_adc_work.work);
+	struct snd_soc_codec *codec = rt5665->codec;
+
+	snd_soc_update_bits(codec, RT5665_MONO_ADC_DIG_VOL,
+		RT5665_L_MUTE, 0);
+}
+
+static void rt5665_mono_r_adc_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, mono_r_adc_work.work);
+	struct snd_soc_codec *codec = rt5665->codec;
+
+	snd_soc_update_bits(codec, RT5665_MONO_ADC_DIG_VOL,
+		RT5665_R_MUTE, 0);
+}
+
+static void rt5665_sto2_l_adc_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, sto2_l_adc_work.work);
+	struct snd_soc_codec *codec = rt5665->codec;
+
+	snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
+		RT5665_L_MUTE, 0);
+}
+
+static void rt5665_sto2_r_adc_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, sto2_r_adc_work.work);
+	struct snd_soc_codec *codec = rt5665->codec;
+
+	snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
+		RT5665_R_MUTE, 0);
 }
 
 int rt5665_set_jack_detect(struct snd_soc_codec *codec,
@@ -3684,12 +3748,147 @@ static int rt5665_micbias2_event(struct snd_soc_dapm_widget *w,
 
 }
 
-static int rt5665_adc_depop_event(struct snd_soc_dapm_widget *w,
+static int rt5665_sto1_l_adc_depop_event(struct snd_soc_dapm_widget *w,
 	struct snd_kcontrol *kcontrol, int event)
 {
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
 	switch (event) {
-	case SND_SOC_DAPM_PRE_PMU:
-		msleep(50);
+	case SND_SOC_DAPM_POST_PMU:
+		schedule_delayed_work(&rt5665->sto1_l_adc_work,
+			msecs_to_jiffies(60));
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		cancel_delayed_work_sync(&rt5665->sto1_l_adc_work);
+		snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
+			RT5665_L_MUTE, RT5665_L_MUTE);
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
+static int rt5665_sto1_r_adc_depop_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		schedule_delayed_work(&rt5665->sto1_r_adc_work,
+			msecs_to_jiffies(60));
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		cancel_delayed_work_sync(&rt5665->sto1_r_adc_work);
+		snd_soc_update_bits(codec, RT5665_STO1_ADC_DIG_VOL,
+			RT5665_R_MUTE, RT5665_R_MUTE);
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
+static int rt5665_mono_l_adc_depop_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		schedule_delayed_work(&rt5665->mono_l_adc_work,
+			msecs_to_jiffies(60));
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		cancel_delayed_work_sync(&rt5665->mono_l_adc_work);
+		snd_soc_update_bits(codec, RT5665_MONO_ADC_DIG_VOL,
+			RT5665_L_MUTE, RT5665_L_MUTE);
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
+static int rt5665_mono_r_adc_depop_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		schedule_delayed_work(&rt5665->mono_r_adc_work,
+			msecs_to_jiffies(60));
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		cancel_delayed_work_sync(&rt5665->mono_r_adc_work);
+		snd_soc_update_bits(codec, RT5665_MONO_ADC_DIG_VOL,
+			RT5665_R_MUTE, RT5665_R_MUTE);
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
+static int rt5665_sto2_l_adc_depop_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		schedule_delayed_work(&rt5665->sto2_l_adc_work,
+			msecs_to_jiffies(60));
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		cancel_delayed_work_sync(&rt5665->sto2_l_adc_work);
+		snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
+			RT5665_L_MUTE, RT5665_L_MUTE);
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 0;
+}
+
+static int rt5665_sto2_r_adc_depop_event(struct snd_soc_dapm_widget *w,
+	struct snd_kcontrol *kcontrol, int event)
+{
+	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
+	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
+
+	switch (event) {
+	case SND_SOC_DAPM_POST_PMU:
+		schedule_delayed_work(&rt5665->sto2_r_adc_work,
+			msecs_to_jiffies(60));
+		break;
+
+	case SND_SOC_DAPM_PRE_PMD:
+		cancel_delayed_work_sync(&rt5665->sto2_r_adc_work);
+		snd_soc_update_bits(codec, RT5665_STO2_ADC_DIG_VOL,
+			RT5665_R_MUTE, RT5665_R_MUTE);
 		break;
 
 	default:
@@ -3917,34 +4116,34 @@ static const struct snd_soc_dapm_widget rt5665_dapm_widgets[] = {
 		RT5665_PWR_ADC_S1F_BIT, 0, NULL, 0),
 	SND_SOC_DAPM_SUPPLY("ADC Stereo2 Filter", RT5665_PWR_DIG_2,
 		RT5665_PWR_ADC_S2F_BIT, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER_E("Stereo1 ADC MIXL", RT5665_STO1_ADC_DIG_VOL,
-		RT5665_L_MUTE_SFT, 1, rt5665_sto1_adc_l_mix,
-		ARRAY_SIZE(rt5665_sto1_adc_l_mix), rt5665_adc_depop_event,
-		SND_SOC_DAPM_PRE_PMU),
-	SND_SOC_DAPM_MIXER_E("Stereo1 ADC MIXR", RT5665_STO1_ADC_DIG_VOL,
-		RT5665_R_MUTE_SFT, 1, rt5665_sto1_adc_r_mix,
-		ARRAY_SIZE(rt5665_sto1_adc_r_mix), rt5665_adc_depop_event,
-		SND_SOC_DAPM_PRE_PMU),
-	SND_SOC_DAPM_MIXER_E("Stereo2 ADC MIXL", RT5665_STO2_ADC_DIG_VOL,
-		RT5665_L_MUTE_SFT, 1, rt5665_sto2_adc_l_mix,
-		ARRAY_SIZE(rt5665_sto2_adc_l_mix), rt5665_adc_depop_event,
-		SND_SOC_DAPM_PRE_PMU),
-	SND_SOC_DAPM_MIXER_E("Stereo2 ADC MIXR", RT5665_STO2_ADC_DIG_VOL,
+	SND_SOC_DAPM_MIXER_E("Stereo1 ADC MIXL", SND_SOC_NOPM,
+		0, 0, rt5665_sto1_adc_l_mix,
+		ARRAY_SIZE(rt5665_sto1_adc_l_mix), rt5665_sto1_l_adc_depop_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_MIXER_E("Stereo1 ADC MIXR", SND_SOC_NOPM,
+		0, 0, rt5665_sto1_adc_r_mix,
+		ARRAY_SIZE(rt5665_sto1_adc_r_mix), rt5665_sto1_r_adc_depop_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_MIXER_E("Stereo2 ADC MIXL", SND_SOC_NOPM,
+		0, 0, rt5665_sto2_adc_l_mix,
+		ARRAY_SIZE(rt5665_sto2_adc_l_mix), rt5665_sto2_l_adc_depop_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
+	SND_SOC_DAPM_MIXER_E("Stereo2 ADC MIXR", SND_SOC_NOPM,
 		RT5665_R_MUTE_SFT, 1, rt5665_sto2_adc_r_mix,
-		ARRAY_SIZE(rt5665_sto2_adc_r_mix), rt5665_adc_depop_event,
-		SND_SOC_DAPM_PRE_PMU),
+		ARRAY_SIZE(rt5665_sto2_adc_r_mix), rt5665_sto2_r_adc_depop_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_SUPPLY("ADC Mono Left Filter", RT5665_PWR_DIG_2,
 		RT5665_PWR_ADC_MF_L_BIT, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER_E("Mono ADC MIXL", RT5665_MONO_ADC_DIG_VOL,
-		RT5665_L_MUTE_SFT, 1, rt5665_mono_adc_l_mix,
-		ARRAY_SIZE(rt5665_mono_adc_l_mix), rt5665_adc_depop_event,
-		SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_MIXER_E("Mono ADC MIXL", SND_SOC_NOPM,
+		0, 0, rt5665_mono_adc_l_mix,
+		ARRAY_SIZE(rt5665_mono_adc_l_mix), rt5665_mono_l_adc_depop_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 	SND_SOC_DAPM_SUPPLY("ADC Mono Right Filter", RT5665_PWR_DIG_2,
 		RT5665_PWR_ADC_MF_R_BIT, 0, NULL, 0),
-	SND_SOC_DAPM_MIXER_E("Mono ADC MIXR", RT5665_MONO_ADC_DIG_VOL,
-		RT5665_R_MUTE_SFT, 1, rt5665_mono_adc_r_mix,
-		ARRAY_SIZE(rt5665_mono_adc_r_mix), rt5665_adc_depop_event,
-		SND_SOC_DAPM_PRE_PMU),
+	SND_SOC_DAPM_MIXER_E("Mono ADC MIXR", SND_SOC_NOPM,
+		0, 0, rt5665_mono_adc_r_mix,
+		ARRAY_SIZE(rt5665_mono_adc_r_mix), rt5665_mono_r_adc_depop_event,
+		SND_SOC_DAPM_POST_PMU | SND_SOC_DAPM_PRE_PMD),
 
 	/* ADC PGA */
 	SND_SOC_DAPM_PGA("Stereo1 ADC MIX", SND_SOC_NOPM, 0, 0, NULL, 0),
@@ -6058,6 +6257,13 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
 	INIT_DELAYED_WORK(&rt5665->jd_check_work, rt5665_jd_check_handler);
 	INIT_DELAYED_WORK(&rt5665->ng_check_work, rt5665_ng_check_handler);
+
+	INIT_DELAYED_WORK(&rt5665->sto1_l_adc_work, rt5665_sto1_l_adc_handler);
+	INIT_DELAYED_WORK(&rt5665->sto1_r_adc_work, rt5665_sto1_r_adc_handler);
+	INIT_DELAYED_WORK(&rt5665->mono_l_adc_work, rt5665_mono_l_adc_handler);
+	INIT_DELAYED_WORK(&rt5665->mono_r_adc_work, rt5665_mono_r_adc_handler);
+	INIT_DELAYED_WORK(&rt5665->sto2_l_adc_work, rt5665_sto2_l_adc_handler);
+	INIT_DELAYED_WORK(&rt5665->sto2_r_adc_work, rt5665_sto2_r_adc_handler);
 
 #ifdef CONFIG_SWITCH
 	switch_dev_register(&rt5665_headset_switch);
