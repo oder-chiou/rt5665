@@ -2000,6 +2000,7 @@ struct rt5665_priv {
 	struct delayed_work calibrate_work;
 	struct delayed_work jd_check_work;
 	struct delayed_work ng_check_work;
+	struct delayed_work mic_check_work;
 	struct delayed_work sto1_l_adc_work, sto1_r_adc_work;
 	struct delayed_work mono_l_adc_work, mono_r_adc_work;
 	struct delayed_work sto2_l_adc_work, sto2_r_adc_work;
@@ -2032,6 +2033,7 @@ struct rt5665_priv {
 	bool is_suspend;
 	unsigned long rek_timeout;
 	bool rek;
+	bool mic_check_break;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;
