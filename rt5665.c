@@ -3898,7 +3898,7 @@ static int rt5665_sto1_l_adc_depop_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		schedule_delayed_work(&rt5665->sto1_l_adc_work,
-			msecs_to_jiffies(60));
+			msecs_to_jiffies(80));
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
@@ -3923,7 +3923,7 @@ static int rt5665_sto1_r_adc_depop_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		schedule_delayed_work(&rt5665->sto1_r_adc_work,
-			msecs_to_jiffies(60));
+			msecs_to_jiffies(80));
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
@@ -3948,7 +3948,7 @@ static int rt5665_mono_l_adc_depop_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		schedule_delayed_work(&rt5665->mono_l_adc_work,
-			msecs_to_jiffies(60));
+			msecs_to_jiffies(80));
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
@@ -3973,7 +3973,7 @@ static int rt5665_mono_r_adc_depop_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		schedule_delayed_work(&rt5665->mono_r_adc_work,
-			msecs_to_jiffies(60));
+			msecs_to_jiffies(80));
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
@@ -3998,7 +3998,7 @@ static int rt5665_sto2_l_adc_depop_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		schedule_delayed_work(&rt5665->sto2_l_adc_work,
-			msecs_to_jiffies(60));
+			msecs_to_jiffies(80));
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
@@ -4023,7 +4023,7 @@ static int rt5665_sto2_r_adc_depop_event(struct snd_soc_dapm_widget *w,
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		schedule_delayed_work(&rt5665->sto2_r_adc_work,
-			msecs_to_jiffies(60));
+			msecs_to_jiffies(80));
 		break;
 
 	case SND_SOC_DAPM_PRE_PMD:
