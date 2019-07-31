@@ -1163,13 +1163,6 @@ static int rt5665_hp_vol_put(struct snd_kcontrol *kcontrol,
 
 	ret = snd_soc_put_volsw(kcontrol, ucontrol);
 
-	if (snd_soc_read(codec, RT5665_STO_NG2_CTRL_1) & RT5665_NG2_EN) {
-		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
-			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
-		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
-			RT5665_NG2_EN_MASK, RT5665_NG2_EN);
-	}
-
 	mutex_unlock(&codec->component.card->dapm_mutex);
 
 	return ret;
@@ -2519,23 +2512,6 @@ static int rt5665_disable_ng2_put(struct snd_kcontrol *kcontrol,
 	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
 
 	rt5665->disable_ng2 = !!ucontrol->value.integer.value[0];
-	if (rt5665->disable_ng2) {
-		snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
-			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
-		snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
-			RT5665_NG2_EN_MASK, RT5665_NG2_DIS);
-		rt5665_noise_gate(codec, false);
-	} else {
-		if (snd_soc_read(codec, RT5665_HP_CTRL_2) & RT5665_VOL_L_MUTE) {
-			snd_soc_update_bits(codec, RT5665_STO_NG2_CTRL_1,
-				RT5665_NG2_EN_MASK, RT5665_NG2_EN);
-			rt5665_noise_gate(codec, true);
-		}
-
-		if (snd_soc_read(codec, RT5665_MONO_OUT) & 0x30)
-			snd_soc_update_bits(codec, RT5665_MONO_NG2_CTRL_1,
-				RT5665_NG2_EN_MASK, RT5665_NG2_EN);
-	}
 
 	return 0;
 }
