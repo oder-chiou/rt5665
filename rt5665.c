@@ -1437,8 +1437,6 @@ static int rt5665_button_detect(struct snd_soc_codec *codec)
 static void rt5665_enable_push_button_irq(struct snd_soc_codec *codec,
 	bool enable)
 {
-	struct rt5665_priv *rt5665 = snd_soc_codec_get_drvdata(codec);
-
 	if (enable) {
 		snd_soc_write(codec, RT5665_4BTN_IL_CMD_1, 0x0003);
 		snd_soc_update_bits(codec, RT5665_SAR_IL_CMD_9, 0x1, 0x1);
@@ -1448,8 +1446,7 @@ static void rt5665_enable_push_button_irq(struct snd_soc_codec *codec,
 				RT5665_4BTN_IL_EN | RT5665_4BTN_IL_NOR);
 		snd_soc_update_bits(codec, RT5665_IRQ_CTRL_3,
 				RT5665_IL_IRQ_MASK, RT5665_IL_IRQ_EN);
-		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
-			snd_soc_update_bits(codec, RT5665_IRQ_CTRL_6, 0x100,
+		snd_soc_update_bits(codec, RT5665_IRQ_CTRL_6, 0x100,
 				0x100);
 	} else {
 		snd_soc_update_bits(codec, RT5665_IRQ_CTRL_3,
@@ -1742,32 +1739,6 @@ static irqreturn_t rt5665_open_gender_irq(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static void rt5665_jd_check_handler(struct work_struct *work)
-{
-	struct rt5665_priv *rt5665 =
-		container_of(work, struct rt5665_priv, jd_check_work.work);
-	int mask;
-
-	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
-		mask = 0x1010;
-	else
-		mask = 0x0010;
-
-	if (snd_soc_read(rt5665->codec, RT5665_AJD1_CTRL) & mask) {
-		/* jack out */
-		rt5665->jack_type = rt5665_headset_detect(rt5665->codec, 0);
-#ifdef CONFIG_SWITCH
-		switch_set_state(&rt5665_headset_switch, 0);
-#endif
-		snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
-				SND_JACK_HEADSET |
-				SND_JACK_BTN_0 | SND_JACK_BTN_1 |
-				SND_JACK_BTN_2 | SND_JACK_BTN_3);
-	} else {
-		schedule_delayed_work(&rt5665->jd_check_work, 500);
-	}
-}
-
 static void rt5665_ng_check_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
@@ -1876,10 +1847,9 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 				switch_set_state(&rt5665_headset_switch, 1);
 #endif
-				if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
-					snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-						RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-						RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
+				snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+					RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+					RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 
 				snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
 					SND_JACK_HEADSET);
@@ -1903,10 +1873,9 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 	snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
 	snd_soc_dapm_sync(dapm);
 
-	if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
-		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-			RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-			RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
+	snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+		RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+		RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 }
 
 static void rt5665_sto1_l_adc_handler(struct work_struct *work)
@@ -2003,6 +1972,12 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 		regmap_update_bits(rt5665->regmap, RT5665_PWR_ANLG_2,
 			RT5665_PWR_JD1, RT5665_PWR_JD1);
 		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_1, 0x8, 0x8);
+		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_6, 0x2000,
+			0x2000);
+		if (!rt5665->pdata.mic_check_in_bg)
+			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 		break;
 
 	case RT5665_JD_NULL:
@@ -2066,7 +2041,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 				switch_set_state(&rt5665_headset_switch, 1);
 #endif
-				if (rt5665->pdata.jd_src == RT5665_JD1_JD2 && rt5665->pdata.mic_check_in_bg)
+				if (rt5665->pdata.mic_check_in_bg)
 					snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 						RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
 						RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
@@ -2074,7 +2049,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
-				if (rt5665->pdata.jd_src == RT5665_JD1_JD2 && rt5665->pdata.mic_check_in_bg)
+				if (rt5665->pdata.mic_check_in_bg)
 					schedule_delayed_work(&rt5665->mic_check_work,
 						msecs_to_jiffies(400));
 			} else {
@@ -2185,14 +2160,6 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 			SND_JACK_HEADSET |
 			SND_JACK_BTN_0 | SND_JACK_BTN_1 |
 			SND_JACK_BTN_2 | SND_JACK_BTN_3);
-
-	if (rt5665->pdata.jd_src == RT5665_JD1) {
-		if (rt5665->jack_type & (SND_JACK_BTN_0 | SND_JACK_BTN_1 |
-			SND_JACK_BTN_2 | SND_JACK_BTN_3))
-			schedule_delayed_work(&rt5665->jd_check_work, 0);
-		else
-			cancel_delayed_work_sync(&rt5665->jd_check_work);
-	}
 
 	mutex_unlock(&rt5665->open_gender_mutex);
 	wake_lock_timeout(&rt5665->jack_detect_wake_lock, HZ);
@@ -2702,7 +2669,7 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK, RT5665_PM_HP_LV);
-		if (rt5665->pdata.jd_src == RT5665_JD1_JD2 && rt5665->jack_type != 0)
+		if (rt5665->jack_type != 0)
 			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
 				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
@@ -6101,11 +6068,7 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 	if (rt5665->irq) {
 		rt5665_irq(0, rt5665);
 
-		if (rt5665->pdata.jd_src == RT5665_JD1_JD2)
-			irq_flags = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
-		else
-			irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING |
-				IRQF_ONESHOT;
+		irq_flags = IRQF_TRIGGER_RISING | IRQF_ONESHOT;
 
 		ret = request_threaded_irq(rt5665->irq, NULL, rt5665_irq,
 			irq_flags, "rt5665", rt5665);
@@ -6376,7 +6339,6 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	INIT_DELAYED_WORK(&rt5665->jack_detect_open_gender_work,
 		rt5665_jack_detect_open_gender_handler);
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
-	INIT_DELAYED_WORK(&rt5665->jd_check_work, rt5665_jd_check_handler);
 	INIT_DELAYED_WORK(&rt5665->ng_check_work, rt5665_ng_check_handler);
 	INIT_DELAYED_WORK(&rt5665->mic_check_work, rt5665_mic_check_handler);
 
