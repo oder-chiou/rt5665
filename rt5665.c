@@ -471,6 +471,8 @@ static struct reg_default rt5665_init_list[] = {
 	{RT5665_STO1_ADC_DIG_VOL,	0xafaf},
 	{RT5665_MONO_ADC_DIG_VOL,	0xafaf},
 	{RT5665_STO2_ADC_DIG_VOL,	0xafaf},
+	{RT5665_GPIO_CTRL_1,		0x002a},
+	{RT5665_GPIO_CTRL_2,		0x4aaa},
 };
 
 static int rt5665_reg_init(struct rt5665_priv *rt5665)
