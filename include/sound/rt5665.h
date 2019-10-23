@@ -56,6 +56,7 @@ struct rt5665_platform_data {
 
 	int ext_ant_det_gpio;
 	bool mic_check_in_bg;
+	bool rek_first_playback;
 };
 
 #endif

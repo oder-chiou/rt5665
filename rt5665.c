@@ -1762,7 +1762,7 @@ static void rt5665_ng_check_handler(struct work_struct *work)
 
 	schedule_delayed_work(&rt5665->ng_check_work, 50);
 }
- 
+
 static void rt5665_mic_check_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
@@ -5978,6 +5978,8 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 
 	rt5665->pdata.mic_check_in_bg = of_property_read_bool(dev->of_node,
 		"realtek,mic-check-in-bg");
+	rt5665->pdata.rek_first_playback = of_property_read_bool(dev->of_node,
+		"realtek,rek-first-playback");
 
 	return 0;
 }
@@ -6366,6 +6368,9 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 		dev_err(&i2c->dev, "Couldn't register control device\n");
 
 	mutex_init(&rt5665->open_gender_mutex);
+
+	if (rt5665->pdata.rek_first_playback)
+		rt5665->do_rek = true;
 
 	return snd_soc_register_codec(&i2c->dev, &soc_codec_dev_rt5665,
 			rt5665_dai, ARRAY_SIZE(rt5665_dai));
