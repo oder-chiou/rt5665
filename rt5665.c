@@ -1795,8 +1795,8 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 	else
 		mask = 0x0010;
 
-	for (i = 0; i < 9; i++) {
-		if (i % 2 == 0) {
+	for (i = 0; i < 81; i++) {
+		if (i % 20 == 0) {
 			sar_adc_value = snd_soc_read(rt5665->codec,
 				RT5665_SAR_IL_CMD_4) & 0x7ff;
 
@@ -2053,7 +2053,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #endif
 				if (rt5665->pdata.mic_check_in_bg)
 					schedule_delayed_work(&rt5665->mic_check_work,
-						msecs_to_jiffies(40));
+						msecs_to_jiffies(400));
 			} else {
 #ifdef CONFIG_SWITCH
 				switch_set_state(&rt5665_headset_switch, 0); /* open gender */
