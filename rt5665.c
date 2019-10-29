@@ -2156,6 +2156,11 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 				rt5665->pdata.delay_plug_in;
 		else
 			rt5665->irq_work_delay_time = 50;
+
+		if (rt5665->pdata.mic_check_in_bg)
+			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+				RT5665_OSW_L_EN | RT5665_OSW_R_EN);
 	}
 
 	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
@@ -2671,7 +2676,7 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK, RT5665_PM_HP_LV);
-		if (rt5665->jack_type != 0)
+		if (!rt5665->pdata.mic_check_in_bg || (rt5665->pdata.mic_check_in_bg && rt5665->jack_type != 0))
 			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
 				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
