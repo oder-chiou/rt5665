@@ -55,6 +55,7 @@ struct rt5665_platform_data {
 	unsigned int offset_comp_r[16];
 
 	int ext_ant_det_gpio;
+	int dtv_check_gpio;
 	bool mic_check_in_bg;
 	bool rek_first_playback;
 };
