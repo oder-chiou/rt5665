@@ -58,6 +58,7 @@ struct rt5665_platform_data {
 	int dtv_check_gpio;
 	bool mic_check_in_bg;
 	bool rek_first_playback;
+	bool use_external_adc;
 };
 
 #endif

@@ -2000,6 +2000,7 @@ struct rt5665_priv {
 	struct delayed_work calibrate_work;
 	struct delayed_work ng_check_work;
 	struct delayed_work mic_check_work;
+	struct delayed_work water_detect_work;
 	struct delayed_work sto1_l_adc_work, sto1_r_adc_work;
 	struct delayed_work mono_l_adc_work, mono_r_adc_work;
 	struct delayed_work sto2_l_adc_work, sto2_r_adc_work;
@@ -2038,6 +2039,8 @@ struct rt5665_priv {
 	unsigned int impedance_value;
 	unsigned int impedance_gain;
 	unsigned int impedance_bias;
+
+	struct iio_channel *jack_adc;
 };
 
 int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,

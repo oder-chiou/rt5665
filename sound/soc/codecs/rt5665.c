@@ -24,6 +24,7 @@
 #include <linux/slab.h>
 #include <linux/cdev.h>
 #include <linux/miscdevice.h>
+#include <linux/iio/consumer.h>
 #ifdef CONFIG_SWITCH
 #include <linux/switch.h>
 #endif
@@ -1022,6 +1023,45 @@ static const struct snd_kcontrol_new rt5665_if3_dac_swap_mux =
 static const struct snd_kcontrol_new rt5665_if3_adc_swap_mux =
 	SOC_DAPM_ENUM("IF3 ADC Swap Source", rt5665_if3_adc_enum);
 
+#define RT5665_ADC_SAMPLE_SIZE	5
+
+static int rt5665_adc_get_value(struct rt5665_priv *rt5665)
+{
+	int adc_data = -1;
+	int adc_max = 0;
+	int adc_min = 0xFFFF;
+	int adc_total = 0;
+	int adc_retry_cnt = 0;
+	int i, ret;
+	struct iio_channel *jack_adc = rt5665->jack_adc;
+	struct snd_soc_codec *codec = rt5665->codec;
+
+	for (i = 0; i < RT5665_ADC_SAMPLE_SIZE; i++) {
+		iio_read_channel_raw(jack_adc, &adc_data);
+		/* if adc_data is negative, ignore */
+		while (adc_data < 0) {
+			adc_retry_cnt++;
+			if (adc_retry_cnt > 10)
+				return adc_data;
+			iio_read_channel_raw(jack_adc, &adc_data);
+		}
+
+		/* Update min/max values */
+		if (adc_data > adc_max)
+			adc_max = adc_data;
+		if (adc_data < adc_min)
+			adc_min = adc_data;
+
+		adc_total += adc_data;
+	}
+
+	ret = (adc_total - adc_max - adc_min) / (RT5665_ADC_SAMPLE_SIZE - 2);
+
+	dev_dbg(codec->dev, "rt5665_adc_get_value = %d\n", ret);
+
+	return ret;
+}
+
 static void rt5665_offset_compensate(struct rt5665_priv *rt5665)
 {
 	unsigned int reg005, reg1ef[16], reg1f0[16], offset;
@@ -1880,6 +1920,69 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 		RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 }
 
+static void rt5665_water_detect_handler(struct work_struct *work)
+{
+	struct rt5665_priv *rt5665 =
+		container_of(work, struct rt5665_priv, water_detect_work.work);
+	struct snd_soc_codec *codec = rt5665->codec;
+	int adc_val;
+
+	wake_lock(&rt5665->jack_detect_wake_lock);
+
+	adc_val = rt5665_adc_get_value(rt5665);
+
+	mutex_lock(&rt5665->open_gender_mutex);
+
+	if (adc_val <= 60 && rt5665->jack_type == 0) {
+		/* jack was out, report jack type */
+		rt5665->jack_type = rt5665_headset_detect(rt5665->codec,
+			1);
+		if (rt5665->jack_type == SND_JACK_HEADSET) {
+#ifdef CONFIG_SWITCH
+			switch_set_state(&rt5665_headset_switch, 1);
+#endif
+		} else if (rt5665->jack_type == SND_JACK_HEADPHONE) {
+#ifdef CONFIG_SWITCH
+			switch_set_state(&rt5665_headset_switch, 2);
+#endif
+		}
+
+		if (rt5665->pdata.mic_check_in_bg)
+			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
+
+		if (rt5665->pdata.delay_plug_out_pb)
+			rt5665->irq_work_delay_time =
+				rt5665->pdata.delay_plug_out_pb;
+		else
+			rt5665->irq_work_delay_time = 0;
+	}
+
+	if (adc_val > 280 && (rt5665->jack_type & SND_JACK_HEADSET)) {
+		/* jack out */
+		rt5665->jack_type = rt5665_headset_detect(rt5665->codec, 0);
+#ifdef CONFIG_SWITCH
+		switch_set_state(&rt5665_headset_switch, 0);
+#endif
+		if (rt5665->pdata.delay_plug_in)
+			rt5665->irq_work_delay_time =
+				rt5665->pdata.delay_plug_in;
+		else
+			rt5665->irq_work_delay_time = 50;
+	}
+
+	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
+		SND_JACK_HEADSET);
+
+	mutex_unlock(&rt5665->open_gender_mutex);
+
+	schedule_delayed_work( &rt5665->water_detect_work,
+		msecs_to_jiffies(1000));
+
+	wake_lock_timeout(&rt5665->jack_detect_wake_lock, 2 * HZ);
+}
+
 static void rt5665_sto1_l_adc_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
@@ -2015,6 +2118,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 
 	rt5665->mic_check_break = true;
 	cancel_delayed_work_sync(&rt5665->mic_check_work);
+	cancel_delayed_work_sync(&rt5665->water_detect_work);
 
 	reg094 = snd_soc_read(codec, RT5665_MICBIAS_2);
 
@@ -2034,6 +2138,19 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	}
 
 	if (!(val & mask)) {
+		if (rt5665->pdata.use_external_adc) {
+			if (rt5665_adc_get_value(rt5665) > 280) {
+				schedule_delayed_work(
+					&rt5665->water_detect_work,
+					msecs_to_jiffies(1000));
+				mutex_unlock(&rt5665->open_gender_mutex);
+				wake_lock_timeout(
+					&rt5665->jack_detect_wake_lock,
+					2 * HZ);
+				return;
+			}
+		}
+
 		/* jack in */
 		if (rt5665->jack_type == 0) {
 			/* jack was out, report jack type */
@@ -5993,6 +6110,8 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 		"realtek,mic-check-in-bg");
 	rt5665->pdata.rek_first_playback = of_property_read_bool(dev->of_node,
 		"realtek,rek-first-playback");
+	rt5665->pdata.use_external_adc = of_property_read_bool(dev->of_node,
+		"realtek,use-external-adc");
 
 	return 0;
 }
@@ -6358,6 +6477,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	INIT_DELAYED_WORK(&rt5665->calibrate_work, rt5665_calibrate_handler);
 	INIT_DELAYED_WORK(&rt5665->ng_check_work, rt5665_ng_check_handler);
 	INIT_DELAYED_WORK(&rt5665->mic_check_work, rt5665_mic_check_handler);
+	INIT_DELAYED_WORK(&rt5665->water_detect_work, rt5665_water_detect_handler);
 
 	INIT_DELAYED_WORK(&rt5665->sto1_l_adc_work, rt5665_sto1_l_adc_handler);
 	INIT_DELAYED_WORK(&rt5665->sto1_r_adc_work, rt5665_sto1_r_adc_handler);
@@ -6382,6 +6502,9 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 
 	mutex_init(&rt5665->open_gender_mutex);
 
+	if (rt5665->pdata.use_external_adc)
+		rt5665->jack_adc = iio_channel_get_all(&i2c->dev);
+
 	if (rt5665->pdata.rek_first_playback)
 		rt5665->do_rek = true;
 
@@ -6402,6 +6525,8 @@ static int rt5665_i2c_remove(struct i2c_client *i2c)
 #endif
 
 	wake_lock_destroy(&rt5665->jack_detect_wake_lock);
+
+	iio_channel_release(rt5665->jack_adc);
 
 	return 0;
 }
