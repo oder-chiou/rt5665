@@ -1523,6 +1523,8 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		else
 			mask = 0x0010;
 
+		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030,
+			0x0020);
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
 			0);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x300,
@@ -1644,6 +1646,7 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		rt5665->jack_type = 0;
 		sar_adc_value = 0;
 		rt5665->adc_val = sar_adc_value;
+		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 	}
 
 	dev_dbg(codec->dev, "jack_type = %d\n", rt5665->jack_type);
@@ -1825,8 +1828,6 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 	regmap_write(rt5665->regmap, RT5665_EJD_CTRL_3, 0x3424);
 	regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0xa297);
 
-	msleep(20);
-
 	sar_hs_type = rt5665->pdata.sar_hs_type ? rt5665->pdata.sar_hs_type :
 		729;
 
@@ -1835,77 +1836,74 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 	else
 		mask = 0x0010;
 
-	for (i = 0; i < 81; i++) {
-		if (i % 20 == 0) {
+	for (i = 0; i < 9; i++) {
+		msleep(20);
+
+		if (i % 2 == 0) {
 			sar_adc_value = snd_soc_read(rt5665->codec,
 				RT5665_SAR_IL_CMD_4) & 0x7ff;
 
 			pr_debug("%s: sar_adc_value = %d\n", __func__, sar_adc_value);
-
-			if (sar_adc_value > sar_hs_type) {
-				/* Enable Fast Discharge Start */
-				reg094 = snd_soc_read(codec, RT5665_MICBIAS_2);
-
-				regmap_update_bits(rt5665->regmap,
-					RT5665_EJD_CTRL_4, 0xc000, 0);
-				regmap_update_bits(rt5665->regmap,
-					RT5665_MICBIAS_2, 0x200, 0x200);
-				regmap_update_bits(rt5665->regmap,
-					RT5665_VOL_TEST, 0x8000, 0x8000);
-
-				msleep(20);
-
-				regmap_read(rt5665->regmap, RT5665_GPIO_STA,
-					&val);
-				if (val & 0x4) {
-					regmap_update_bits(rt5665->regmap,
-						RT5665_EJD_CTRL_1, 0x180, 0);
-
-					do {
-						msleep(20);
-						regmap_read(rt5665->regmap,
-							RT5665_GPIO_STA, &val);
-
-						if (snd_soc_read(rt5665->codec,
-							RT5665_AJD1_CTRL) & mask)
-							break;
-
-						if (count > 50)
-							break;
-						count++;
-					} while (val & 0x4);
-				}
-
-				regmap_update_bits(rt5665->regmap,
-					RT5665_EJD_CTRL_1, 0x180, 0x180);
-				regmap_update_bits(rt5665->regmap,
-					RT5665_VOL_TEST, 0x8000, 0);
-				regmap_update_bits(rt5665->regmap,
-					RT5665_MICBIAS_2, 0x200, reg094);
-				/* Enable Fast Discharge End */
- 
-				rt5665->jack_type = SND_JACK_HEADSET;
-				rt5665_enable_push_button_irq(codec, true);
-#ifdef CONFIG_SWITCH
-				switch_set_state(&rt5665_headset_switch, 1);
-#endif
-				snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-					RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-					RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
-
-				snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
-					SND_JACK_HEADSET);
-
-				dev_dbg(codec->dev, "jack_type = 0x%04x\n",
-					rt5665->jack_type);
-				return;
-			}
 		}
 
 		if (rt5665->mic_check_break)
 			break;
+	}
+
+	if (!rt5665->mic_check_break && sar_adc_value > sar_hs_type) {
+		/* Enable Fast Discharge Start */
+		reg094 = snd_soc_read(codec, RT5665_MICBIAS_2);
+
+		regmap_update_bits(rt5665->regmap,
+			RT5665_EJD_CTRL_4, 0xc000, 0);
+		regmap_update_bits(rt5665->regmap,
+			RT5665_MICBIAS_2, 0x200, 0x200);
+		regmap_update_bits(rt5665->regmap,
+			RT5665_VOL_TEST, 0x8000, 0x8000);
 
 		msleep(20);
+
+		regmap_read(rt5665->regmap, RT5665_GPIO_STA,
+			&val);
+		if (val & 0x4) {
+			regmap_update_bits(rt5665->regmap,
+				RT5665_EJD_CTRL_1, 0x180, 0);
+
+			do {
+				msleep(20);
+				regmap_read(rt5665->regmap,
+					RT5665_GPIO_STA, &val);
+
+				if (snd_soc_read(rt5665->codec,
+					RT5665_AJD1_CTRL) & mask)
+					break;
+
+				if (count > 50)
+					break;
+				count++;
+			} while (val & 0x4);
+		}
+
+		regmap_update_bits(rt5665->regmap,
+			RT5665_EJD_CTRL_1, 0x180, 0x180);
+		regmap_update_bits(rt5665->regmap,
+			RT5665_VOL_TEST, 0x8000, 0);
+		regmap_update_bits(rt5665->regmap,
+			RT5665_MICBIAS_2, 0x200, reg094);
+		/* Enable Fast Discharge End */
+
+		rt5665->jack_type = SND_JACK_HEADSET;
+		rt5665_enable_push_button_irq(codec, true);
+#ifdef CONFIG_SWITCH
+		switch_set_state(&rt5665_headset_switch, 1);
+#endif
+		rt5665->button_timeout = jiffies + (HZ * 1);
+		snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
+			SND_JACK_HEADSET);
+
+		dev_dbg(codec->dev, "jack_type = 0x%04x\n",
+			rt5665->jack_type);
+		return;
 	}
 
 	regmap_write(rt5665->regmap, RT5665_SAR_IL_CMD_1, 0x2291);
@@ -1914,10 +1912,6 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 
 	snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
 	snd_soc_dapm_sync(dapm);
-
-	snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-		RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-		RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 }
 
 static void rt5665_water_detect_handler(struct work_struct *work)
@@ -2063,10 +2057,9 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 			0xc800);
 		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_6, 0x2000,
 			0x2000);
-		if (!rt5665->pdata.mic_check_in_bg)
-			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
+		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+			RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+			RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 		break;
 
 	case RT5665_JD1:
@@ -2079,10 +2072,9 @@ int rt5665_set_jack_detect(struct snd_soc_codec *codec,
 		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_1, 0x8, 0x8);
 		regmap_update_bits(rt5665->regmap, RT5665_IRQ_CTRL_6, 0x2000,
 			0x2000);
-		if (!rt5665->pdata.mic_check_in_bg)
-			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
+		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
+			RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+			RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 		break;
 
 	case RT5665_JD_NULL:
@@ -2160,17 +2152,14 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 #ifdef CONFIG_SWITCH
 				switch_set_state(&rt5665_headset_switch, 1);
 #endif
-				if (rt5665->pdata.mic_check_in_bg)
-					snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-						RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-						RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
+				rt5665->button_timeout = jiffies + (HZ * 1);
 			} else if (rt5665->jack_type == SND_JACK_HEADPHONE) {
 #ifdef CONFIG_SWITCH
 				switch_set_state(&rt5665_headset_switch, 2);
 #endif
 				if (rt5665->pdata.mic_check_in_bg)
 					schedule_delayed_work(&rt5665->mic_check_work,
-						msecs_to_jiffies(400));
+						msecs_to_jiffies(40));
 			} else {
 #ifdef CONFIG_SWITCH
 				switch_set_state(&rt5665_headset_switch, 0); /* open gender */
@@ -2220,6 +2209,13 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 				/* jack is already in, report button event */
 				rt5665->jack_type = SND_JACK_HEADSET;
 				btn_type = rt5665_button_detect(rt5665->codec);
+
+				if (time_before(jiffies, rt5665->button_timeout)) {
+					btn_type = 0;
+					pr_debug("%s: invalid button event\n",
+						__func__);
+				}
+
 				switch (btn_type) {
 				case 0x8000:
 				case 0x4000:
@@ -2275,11 +2271,6 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 				rt5665->pdata.delay_plug_in;
 		else
 			rt5665->irq_work_delay_time = 50;
-
-		if (rt5665->pdata.mic_check_in_bg)
-			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-				RT5665_OSW_L_EN | RT5665_OSW_R_EN);
 	}
 
 	snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
@@ -2789,16 +2780,11 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
 			RT5665_PM_HP_HV | RT5665_OSW_L_EN | RT5665_OSW_R_EN);
-		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0x0020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0);
 		snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-			RT5665_PM_HP_MASK, RT5665_PM_HP_LV);
-		if (!rt5665->pdata.mic_check_in_bg || (rt5665->pdata.mic_check_in_bg && rt5665->jack_type != 0))
-			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
+			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
+			RT5665_PM_HP_LV | RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 		break;
 	default:
 		return 0;

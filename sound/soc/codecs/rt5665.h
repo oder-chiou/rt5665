@@ -2034,6 +2034,7 @@ struct rt5665_priv {
 	unsigned long rek_timeout;
 	bool rek;
 	bool mic_check_break;
+	unsigned long button_timeout;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;
