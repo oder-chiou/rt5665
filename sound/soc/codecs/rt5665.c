@@ -2259,6 +2259,8 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 			regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2,
 				0x200, reg094);
 
+			rt5665->do_rek = false;
+
 			dev_dbg(codec->dev, "jack_type = 0x%04x\n",
 				rt5665->jack_type);
 		}
