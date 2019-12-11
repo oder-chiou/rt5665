@@ -1641,6 +1641,9 @@ static int rt5665_headset_detect(struct snd_soc_codec *codec, int jack_insert)
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100, 0);
 		snd_soc_dapm_disable_pin(dapm, "MICBIAS1");
 		snd_soc_dapm_sync(dapm);
+		snd_soc_update_bits(codec, RT5665_PWR_ANLG_2, RT5665_PWR_MB1,
+			RT5665_PWR_MB1_PWR_DOWN);
+		snd_soc_update_bits(codec, RT5665_EJD_CTRL_1, 0x80, 0);
 		if (rt5665->jack_type == SND_JACK_HEADSET)
 			rt5665_enable_push_button_irq(codec, false);
 		rt5665->jack_type = 0;
