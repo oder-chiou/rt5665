@@ -1996,10 +1996,16 @@ struct rt5665_priv {
 	struct regmap *regmap;
 	struct snd_soc_jack *hs_jack;
 	struct delayed_work jack_detect_work;
+	struct delayed_work jack_detect_open_gender_work;
 	struct delayed_work calibrate_work;
-	struct delayed_work jd_check_work;
 	struct delayed_work ng_check_work;
+	struct delayed_work mic_check_work;
+	struct delayed_work water_detect_work;
+	struct delayed_work sto1_l_adc_work, sto1_r_adc_work;
+	struct delayed_work mono_l_adc_work, mono_r_adc_work;
+	struct delayed_work sto2_l_adc_work, sto2_r_adc_work;
 	struct wake_lock jack_detect_wake_lock;
+	struct mutex open_gender_mutex;
 
 	int sysclk;
 	int sysclk_src;
@@ -2013,20 +2019,29 @@ struct rt5665_priv {
 	int pll_out;
 
 	int jack_type;
+	int btn_det;
 	int irq;
 	int irq_work_delay_time;
 
+	unsigned int adc_val;
 	unsigned int adb_reg_addr[0x100];
 	unsigned int adb_reg_value[0x100];
 	unsigned short adb_reg_num;
 	unsigned int magic;
 	bool do_rek;
 	bool disable_ng2;
+	bool is_suspend;
+	unsigned long rek_timeout;
+	bool rek;
+	bool mic_check_break;
+	unsigned long button_timeout;
 
 	bool impedance_gain_map;
 	unsigned int impedance_value;
 	unsigned int impedance_gain;
 	unsigned int impedance_bias;
+
+	struct iio_channel *jack_adc;
 };
 
 int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
