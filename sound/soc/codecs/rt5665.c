@@ -1974,7 +1974,7 @@ static void rt5665_water_detect_handler(struct work_struct *work)
 
 	mutex_unlock(&rt5665->open_gender_mutex);
 
-	schedule_delayed_work( &rt5665->water_detect_work,
+	schedule_delayed_work(&rt5665->water_detect_work,
 		msecs_to_jiffies(1000));
 
 	wake_lock_timeout(&rt5665->jack_detect_wake_lock, 2 * HZ);
@@ -2364,7 +2364,7 @@ static void rt5665_jack_detect_open_gender_handler(struct work_struct *work)
 
 					dev_dbg(codec->dev, "(open gender fix) jack_type = 0x%04x\n",
 						rt5665->jack_type);
-					
+
 					snd_soc_jack_report(rt5665->hs_jack, rt5665->jack_type,
 						SND_JACK_HEADSET);
 				}
@@ -6224,7 +6224,7 @@ static void rt5665_calibrate(struct rt5665_priv *rt5665)
 	regcache_mark_dirty(rt5665->regmap);
 	regcache_sync(rt5665->regmap);
 
-	//volatile settings
+	/* volatile settings */
 	regmap_write(rt5665->regmap, RT5665_STO1_DAC_SIL_DET, 0x4121);
 
 	mutex_unlock(&codec->component.card->dapm_mutex);
@@ -6347,7 +6347,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 			dev_err(&i2c->dev, "Fail gpio_direction gpio_ldo\n");
 	}
 
-	/* Sleep for 300 ms miniumum */
+	/* Sleep for 300 ms minimum */
 	usleep_range(300000, 350000);
 
 	rt5665->regmap = devm_regmap_init_i2c(i2c, &rt5665_regmap);
@@ -6369,7 +6369,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 		if (regulator_disable(regulator_3v3))
 			dev_err(&i2c->dev, "Fail to disable regulator_3v3\n");
 
-		/* Sleep for 300 ms miniumum */
+		/* Sleep for 300 ms minimum */
 		usleep_range(300000, 350000);
 
 		if (regulator_enable(regulator_1v8))
@@ -6378,7 +6378,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 		if (regulator_enable(regulator_3v3))
 			dev_err(&i2c->dev, "Fail to enable regulator_3v3\n");
 
-		/* Sleep for 300 ms miniumum */
+		/* Sleep for 300 ms minimum */
 		usleep_range(300000, 350000);
 
 		regmap_read(rt5665->regmap, RT5665_DEVICE_ID, &val);
