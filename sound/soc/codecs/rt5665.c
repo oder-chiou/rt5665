@@ -1921,7 +1921,6 @@ static void rt5665_water_detect_handler(struct work_struct *work)
 {
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, water_detect_work.work);
-	struct snd_soc_codec *codec = rt5665->codec;
 	int adc_val;
 
 	wake_lock(&rt5665->jack_detect_wake_lock);
@@ -1943,11 +1942,6 @@ static void rt5665_water_detect_handler(struct work_struct *work)
 			switch_set_state(&rt5665_headset_switch, 2);
 #endif
 		}
-
-		if (rt5665->pdata.mic_check_in_bg)
-			snd_soc_update_bits(codec, RT5665_HP_CHARGE_PUMP_1,
-				RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
-				RT5665_OSW_L_DIS | RT5665_OSW_R_DIS);
 
 		if (rt5665->pdata.delay_plug_out_pb)
 			rt5665->irq_work_delay_time =
