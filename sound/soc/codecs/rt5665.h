@@ -12,7 +12,6 @@
 #ifndef __RT5665_H__
 #define __RT5665_H__
 
-#include <linux/wakelock.h>
 #include <sound/rt5665.h>
 
 #define RT5665_6_8_DEVICE_ID 0x6451
@@ -1991,7 +1990,7 @@ enum {
 };
 
 struct rt5665_priv {
-	struct snd_soc_codec *codec;
+	struct snd_soc_component *component;
 	struct rt5665_platform_data pdata;
 	struct regmap *regmap;
 	struct snd_soc_jack *hs_jack;
@@ -2004,7 +2003,6 @@ struct rt5665_priv {
 	struct delayed_work sto1_l_adc_work, sto1_r_adc_work;
 	struct delayed_work mono_l_adc_work, mono_r_adc_work;
 	struct delayed_work sto2_l_adc_work, sto2_r_adc_work;
-	struct wake_lock jack_detect_wake_lock;
 	struct mutex open_gender_mutex;
 
 	int sysclk;
@@ -2044,9 +2042,7 @@ struct rt5665_priv {
 	struct iio_channel *jack_adc;
 };
 
-int rt5665_sel_asrc_clk_src(struct snd_soc_codec *codec,
+int rt5665_sel_asrc_clk_src(struct snd_soc_component *component,
 		unsigned int filter_mask, unsigned int clk_src);
-int rt5665_set_jack_detect(struct snd_soc_codec *codec,
-	struct snd_soc_jack *hs_jack);
 
 #endif /* __RT5665_H__ */
