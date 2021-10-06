@@ -6102,14 +6102,17 @@ static int rt5665_parse_dt(struct rt5665_priv *rt5665, struct device *dev)
 	rt5665->pdata.dtv_check_gpio = of_get_named_gpio(dev->of_node,
 		"realtek,gpio-dtv-check", 0);
 
-	pr_debug("%s: dtv_check gpio value: %d\n", __func__, gpio_get_value(rt5665->pdata.dtv_check_gpio));
+	if (gpio_is_valid(rt5665->pdata.dtv_check_gpio)) {
+		pr_debug("%s: dtv_check gpio value: %d\n", __func__,
+			gpio_get_value(rt5665->pdata.dtv_check_gpio));
 
-	if (gpio_get_value(rt5665->pdata.dtv_check_gpio)) {
-		pr_debug("%s: DTV flags\n", __func__);
-		of_property_read_u32(dev->of_node, "realtek,sar-hs-open-gender",
-			&rt5665->pdata.sar_hs_open_gender);
-		rt5665->pdata.ext_ant_det_gpio = of_get_named_gpio(dev->of_node,
-			"realtek,ext-ant-det-gpio", 0);
+		if (gpio_get_value(rt5665->pdata.dtv_check_gpio)) {
+			pr_debug("%s: DTV flags\n", __func__);
+			of_property_read_u32(dev->of_node, "realtek,sar-hs-open-gender",
+				&rt5665->pdata.sar_hs_open_gender);
+			rt5665->pdata.ext_ant_det_gpio = of_get_named_gpio(dev->of_node,
+				"realtek,ext-ant-det-gpio", 0);
+		}
 	}
 
 	of_property_read_u32_array(dev->of_node, "realtek,offset-comp",
