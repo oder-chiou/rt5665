@@ -5910,6 +5910,7 @@ static void rt5665_remove(struct snd_soc_component *component)
 {
 	struct rt5665_priv *rt5665 = snd_soc_component_get_drvdata(component);
 
+	cancel_delayed_work_sync(&rt5665->calibrate_work);
 	regmap_write(rt5665->regmap, RT5665_RESET, 0);
 	device_remove_file(component->dev, &dev_attr_codec_reg);
 	device_remove_file(component->dev, &dev_attr_codec_reg_adb);
