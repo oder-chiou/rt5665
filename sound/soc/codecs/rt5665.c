@@ -5495,6 +5495,7 @@ static int rt5665_set_component_sysclk(struct snd_soc_component *component,
 		int clk_id, int source, unsigned int freq, int dir)
 {
 	struct rt5665_priv *rt5665 = snd_soc_component_get_drvdata(component);
+	struct snd_soc_dapm_context *dapm = &component->dapm;
 	unsigned int reg_val = 0;
 
 	if (freq == rt5665->sysclk && clk_id == rt5665->sysclk_src)
@@ -5518,6 +5519,12 @@ static int rt5665_set_component_sysclk(struct snd_soc_component *component,
 		RT5665_SCLK_SRC_MASK, reg_val);
 	rt5665->sysclk = freq;
 	rt5665->sysclk_src = clk_id;
+
+	if (clk_id == RT5665_SCLK_S_PLL1) {
+		snd_soc_dapm_disable_pin(dapm, "PLL");
+		snd_soc_dapm_enable_pin(dapm, "PLL");
+		snd_soc_dapm_sync(dapm);
+	}
 
 	dev_dbg(component->dev, "Sysclk is %dHz and clock id is %d\n", freq, clk_id);
 
