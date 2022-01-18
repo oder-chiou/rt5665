@@ -1522,8 +1522,6 @@ static int rt5665_headset_detect(struct snd_soc_component *component, int jack_i
 		else
 			mask = 0x0010;
 
-		regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030,
-			0x0020);
 		regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000,
 			0);
 		regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x300,
@@ -1826,6 +1824,7 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 	regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_1, 0x80, 0);
 	regmap_update_bits(rt5665->regmap, RT5665_EJD_CTRL_4, 0xc000, 0x4000);
 	regmap_update_bits(rt5665->regmap, RT5665_MICBIAS_2, 0x100, 0x100);
+	regmap_update_bits(rt5665->regmap, RT5665_JD1_THD, 0x0030, 0x0020);
 
 	snd_soc_dapm_force_enable_pin(dapm, "MICBIAS1");
 	snd_soc_dapm_sync(dapm);
@@ -1841,10 +1840,10 @@ static void rt5665_mic_check_handler(struct work_struct *work)
 	else
 		mask = 0x0010;
 
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < 100; i++) {
 		msleep(20);
 
-		if (i % 2 == 0) {
+		if (i % 10 == 0) {
 			sar_adc_value = snd_soc_component_read(component,
 				RT5665_SAR_IL_CMD_4) & 0x7ff;
 
@@ -2826,6 +2825,8 @@ static int rt5665_charge_pump_event(struct snd_soc_dapm_widget *w,
 		snd_soc_component_update_bits(component, RT5665_HP_CHARGE_PUMP_1,
 			RT5665_PM_HP_MASK | RT5665_OSW_L_MASK | RT5665_OSW_R_MASK,
 			RT5665_PM_HP_HV | RT5665_OSW_L_EN | RT5665_OSW_R_EN);
+		snd_soc_component_update_bits(component, RT5665_JD1_THD, 0x0030,
+			0x0020);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		snd_soc_component_update_bits(component, RT5665_HP_CHARGE_PUMP_1,
