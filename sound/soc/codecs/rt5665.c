@@ -6564,6 +6564,8 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 	if (rt5665->pdata.rek_first_playback)
 		rt5665->do_rek = true;
 
+	device_init_wakeup(&i2c->dev, true);
+
 	return devm_snd_soc_register_component(&i2c->dev, &rt5665_soc_component_dev,
 			rt5665_dai, ARRAY_SIZE(rt5665_dai));
 }
@@ -6579,6 +6581,8 @@ static int rt5665_i2c_remove(struct i2c_client *i2c)
 #endif
 
 	iio_channel_release(rt5665->jack_adc);
+
+	device_init_wakeup(&i2c->dev, false);
 
 	return 0;
 }

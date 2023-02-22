@@ -2,7 +2,6 @@ audio_codec: rt5665@1b {
 			compatible = "realtek,rt5665";
 			reg = <0x1b>;
 			interrupts = <SET BY BOARD>;
-			wakeup-source;
 			realtek,in1-differential;
 			realtek,in3-differential;
 			realtek,in4-differential;
