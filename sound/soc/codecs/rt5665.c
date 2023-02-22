@@ -2093,7 +2093,7 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	struct rt5665_priv *rt5665 =
 		container_of(work, struct rt5665_priv, jack_detect_work.work);
 	struct snd_soc_component *component = rt5665->component;
-	int val, btn_type, mask, ret, count = 0;
+	int val, btn_type, mask, ret, count = 0, i;
 	unsigned int reg094;
 
 	pm_stay_awake(component->dev);
@@ -2101,13 +2101,23 @@ static void rt5665_jack_detect_handler(struct work_struct *work)
 	pr_debug("%s\n", __func__);
 
 	if (rt5665->is_suspend) {
-		/* Because some SOCs need wake up time of I2C controller */
-		msleep(50);
+		dev_info(component->dev, "%s wait resume\n", __func__);
+		i = 0;
+		while (i < 10 && rt5665->is_suspend) {
+			msleep(50);
+			i++;
+		}
 	}
 
 	rt5665->mic_check_break = true;
 	cancel_delayed_work_sync(&rt5665->mic_check_work);
 	cancel_delayed_work_sync(&rt5665->water_detect_work);
+
+	i = 0;
+	while (regmap_read(rt5665->regmap, RT5665_AJD1_CTRL, &val) && i < 5) {
+		msleep(100);
+		i++;
+	}
 
 	reg094 = snd_soc_component_read(component, RT5665_MICBIAS_2);
 
