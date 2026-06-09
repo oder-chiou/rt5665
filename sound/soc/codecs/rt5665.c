@@ -6089,7 +6089,6 @@ const struct snd_soc_component_driver rt5665_soc_component_dev = {
 	.set_jack = rt5665_set_jack_detect,
 	.use_pmdown_time	= 1,
 	.endianness		= 1,
-	.non_legacy_dai_naming	= 1,
 };
 
 static const struct regmap_config rt5665_regmap = {
@@ -6374,8 +6373,7 @@ static struct miscdevice rt5665_mic_adc_dev = {
 	.fops = &rt5665_fops
 };
 
-static int rt5665_i2c_probe(struct i2c_client *i2c,
-		    const struct i2c_device_id *id)
+static int rt5665_i2c_probe(struct i2c_client *i2c)
 {
 	struct rt5665_platform_data *pdata = dev_get_platdata(&i2c->dev);
 	struct rt5665_priv *rt5665;
@@ -6608,7 +6606,7 @@ static int rt5665_i2c_probe(struct i2c_client *i2c,
 			rt5665_dai, ARRAY_SIZE(rt5665_dai));
 }
 
-static int rt5665_i2c_remove(struct i2c_client *i2c)
+static void rt5665_i2c_remove(struct i2c_client *i2c)
 {
 	struct rt5665_priv *rt5665 = i2c_get_clientdata(i2c);
 
@@ -6621,8 +6619,6 @@ static int rt5665_i2c_remove(struct i2c_client *i2c)
 	iio_channel_release(rt5665->jack_adc);
 
 	device_init_wakeup(&i2c->dev, false);
-
-	return 0;
 }
 
 static void rt5665_i2c_shutdown(struct i2c_client *client)
