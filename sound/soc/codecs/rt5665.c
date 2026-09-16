@@ -6594,8 +6594,11 @@ static int rt5665_i2c_probe(struct i2c_client *i2c)
 
 	mutex_init(&rt5665->open_gender_mutex);
 
-	if (rt5665->pdata.use_external_adc)
-		rt5665->jack_adc = iio_channel_get_all(&i2c->dev);
+	if (rt5665->pdata.use_external_adc) {
+		rt5665->jack_adc = devm_iio_channel_get(&i2c->dev, "jack");
+		if (IS_ERR(rt5665->jack_adc))
+			dev_err(&i2c->dev, "failed to get jack ADC: %ld\n", PTR_ERR(rt5665->jack_adc));
+	}
 
 	if (rt5665->pdata.rek_first_playback)
 		rt5665->do_rek = true;
@@ -6608,16 +6611,11 @@ static int rt5665_i2c_probe(struct i2c_client *i2c)
 
 static void rt5665_i2c_remove(struct i2c_client *i2c)
 {
-	struct rt5665_priv *rt5665 = i2c_get_clientdata(i2c);
-
 	misc_deregister(&rt5665_mic_adc_dev);
 
 #ifdef CONFIG_SWITCH
 	switch_dev_unregister(&rt5665_headset_switch);
 #endif
-
-	iio_channel_release(rt5665->jack_adc);
-
 	device_init_wakeup(&i2c->dev, false);
 }
 
